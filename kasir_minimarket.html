@@ -1,0 +1,3481 @@
+<!DOCTYPE html>
+<html lang="tet">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keos</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        body.auth-locked #app { display: none; }
+        body:not(.auth-locked) #app { animation: dashboard-in .65s cubic-bezier(.22, 1, .36, 1) both; }
+        body:not(.auth-locked) {
+            background:
+                radial-gradient(circle at 10% 10%, rgba(253, 186, 116, .35), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(253, 224, 170, .5), transparent 34%),
+                linear-gradient(135deg, #fff3dd 0%, #f7eee3 48%, #e8f0ec 100%);
+        }
+        #product-section,
+        #add-product-section,
+        #cashier-section > div {
+            background: linear-gradient(135deg, rgba(255, 250, 240, .8), rgba(255, 237, 210, .62)) !important;
+            border-color: rgba(255, 255, 255, .86) !important;
+            box-shadow: 0 12px 32px rgba(91, 55, 28, .12), inset 0 1px 0 rgba(255, 255, 255, .8);
+            -webkit-backdrop-filter: blur(18px) saturate(145%);
+            backdrop-filter: blur(18px) saturate(145%);
+        }
+        #app > header {
+            margin-left: 15rem;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background:
+                radial-gradient(circle at 85% 0%, rgba(253, 224, 71, .32), transparent 30%),
+                linear-gradient(115deg, #164e63 0%, #c2410c 58%, #ea580c 100%);
+            color: #ecfeff;
+            border-bottom: 1px solid rgba(194, 65, 12, .35);
+            box-shadow: 0 3px 16px rgba(124, 45, 18, .2);
+        }
+        #app > header > .max-w-7xl { max-width: none; padding: 1rem 7rem 1rem 1.5rem; }
+        #app > header > .max-w-7xl > button:first-child { display: none; }
+        #app > header > .max-w-7xl > div:last-child {
+            border-top: 0;
+            padding-top: 0;
+            justify-content: flex-end;
+        }
+        #app > header > .max-w-7xl > div:last-child > :not(:first-child) { display: none; }
+        #app > header #current-date-display { margin-right: .4rem; }
+        #app > header #current-time-display { margin-left: .4rem; }
+        #app > header .date-time-separator { margin: 0 .25rem; }
+        #app > header #current-date-display,
+        #app > header #current-time-display {
+            color: #ecfeff !important;
+            font-weight: 700;
+        }
+        #app > header #current-time-display { color: #fef9c3 !important; }
+        #app > header .bg-slate-800 {
+            background: rgba(15, 23, 42, .16);
+            border-color: rgba(255, 255, 255, .24);
+            color: #ecfeff;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1);
+        }
+        #app > header .bg-slate-800 i { color: #a7f3d0; }
+        #app > header .bg-blue-700 { background: rgba(15, 23, 42, .2); }
+        #app > header .bg-slate-700 { background: rgba(15, 23, 42, .24); }
+        #app > header .logout-corner { display: none; }
+        #app > main { margin-left: 15rem; max-width: calc(100% - 15rem); }
+        .dashboard-sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            z-index: 35;
+            width: 15rem;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 1.25rem 1rem;
+            background:
+                radial-gradient(circle at 88% 10%, rgba(253, 186, 116, .18), transparent 24%),
+                radial-gradient(circle at 8% 30%, rgba(253, 224, 170, .15), transparent 28%),
+                linear-gradient(160deg, rgba(255, 250, 240, .9) 0%, rgba(255, 247, 232, .78) 54%, rgba(255, 252, 244, .84) 100%);
+            border-right: 1px solid #ead8c1;
+            box-shadow: 4px 0 18px rgba(91, 55, 28, .07);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            backdrop-filter: blur(18px) saturate(140%);
+        }
+        .dashboard-sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            padding: .5rem .65rem 1.5rem;
+            color: #0f172a;
+            font-weight: 800;
+            letter-spacing: -.02em;
+        }
+        .dashboard-sidebar-brand i {
+            display: grid;
+            place-items: center;
+            width: 2rem;
+            height: 2rem;
+            border-radius: .65rem;
+            background: #c2410c;
+            color: #fff;
+        }
+        .dashboard-sidebar-label {
+            margin: 1rem .65rem .45rem;
+            color: #94a3b8;
+            font-size: .65rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+        .dashboard-sidebar button {
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            width: 100%;
+            padding: .65rem .7rem;
+            border-radius: .65rem;
+            color: #475569;
+            font-size: .78rem;
+            font-weight: 600;
+            text-align: left;
+            transition: background-color .2s ease, color .2s ease, transform .2s ease;
+        }
+        .dashboard-sidebar button:hover,
+        .dashboard-sidebar button.active {
+            color: #9a3412;
+            background: #ffedd5;
+            transform: translateX(2px);
+        }
+        .dashboard-sidebar button.active {
+            box-shadow: 0 6px 16px rgba(194, 65, 12, .12);
+        }
+        .dashboard-sidebar button i { width: 1rem; text-align: center; }
+        .product-action-button {
+            display: inline-flex;
+            place-items: center;
+            align-items: center;
+            justify-content: center;
+            gap: .25rem;
+            width: auto;
+            height: 1.35rem;
+            padding: 0 .4rem;
+            border-radius: .2rem;
+            color: #fff;
+            font-size: .65rem;
+            transition: filter .2s ease, transform .2s ease;
+        }
+        .product-action-button:hover { filter: brightness(.9); transform: translateY(-1px); }
+        .product-action-edit { background: #0f6474; }
+        .product-action-delete { background: #c2410c; }
+        .dashboard-sidebar .sidebar-logout {
+            margin-top: 1.25rem;
+            border-top: 1px solid #e2e8f0;
+            border-radius: 0;
+            padding-top: 1rem;
+            color: #b91c1c;
+        }
+        .dashboard-sidebar .sidebar-logout:hover {
+            color: #b91c1c;
+            background: #fef2f2;
+        }
+        .dashboard-sidebar .report-sidebar-select {
+            width: 100%;
+            min-height: 2.5rem;
+            padding: .6rem 1.6rem .6rem .2rem;
+            border: 0;
+            border-radius: .55rem;
+            background: transparent;
+            color: #475569;
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            appearance: none;
+        }
+        .dashboard-report-menu {
+            position: relative;
+            padding: .2rem .45rem .2rem .7rem;
+            border: 1px solid transparent;
+            border-radius: .7rem;
+            transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
+        }
+        .dashboard-report-menu::after {
+            content: '';
+            position: absolute;
+            right: .9rem;
+            top: calc(50% - .25rem);
+            width: .45rem;
+            height: .45rem;
+            border-right: 2px solid #64748b;
+            border-bottom: 2px solid #64748b;
+            transform: rotate(45deg);
+            color: #64748b;
+            pointer-events: none;
+        }
+        .dashboard-report-menu:hover,
+        .dashboard-report-menu:focus-within {
+            background: #fff1dc;
+            border-color: #f4c99f;
+            box-shadow: 0 3px 10px rgba(194, 65, 12, .09);
+        }
+        .dashboard-sidebar .report-sidebar-select:hover,
+        .dashboard-sidebar .report-sidebar-select:focus {
+            outline: none;
+            color: #b45309;
+            background: transparent;
+        }
+        #cashier-section > div {
+            overflow: hidden;
+        }
+        #cart-items:has(#empty-cart-msg) {
+            display: grid;
+            place-items: center;
+            min-height: 12rem;
+        }
+        #empty-cart-msg {
+            padding: 2rem 1rem;
+            max-width: 18rem;
+        }
+        #cashier-section .bg-slate-50 {
+            background: linear-gradient(180deg, #fffaf2 0%, #f6eadb 100%);
+        }
+        #btn-pay:not(:disabled) {
+            background: #c2410c;
+            box-shadow: 0 5px 12px rgba(194, 65, 12, .22);
+        }
+        #btn-debe:not(:disabled) {
+            background: #d97706;
+            box-shadow: 0 5px 12px rgba(217, 119, 6, .2);
+        }
+        #btn-pay:not(:disabled):hover,
+        #btn-debe:not(:disabled):hover {
+            transform: translateY(-1px);
+            filter: brightness(.95);
+        }
+        .dashboard-report-menu {
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            width: 100%;
+            color: #475569;
+        }
+        .dashboard-report-menu > i { width: 1rem; text-align: center; color: #c2410c; }
+        body:not(.auth-locked) #add-product-section button[type="submit"],
+        body:not(.auth-locked) #add-product-section button[onclick="openBarcodeScanner()"] {
+            background: linear-gradient(135deg, #c2410c, #ea580c);
+            box-shadow: 0 5px 14px rgba(194, 65, 12, .2);
+        }
+        body:not(.auth-locked) #add-product-section input:focus,
+        body:not(.auth-locked) #product-section input:focus {
+            border-color: #d97706;
+            --tw-ring-color: rgba(217, 119, 6, .35);
+        }
+        body:not(.auth-locked) #products-grid tbody tr:hover { background: #fff1dc; }
+        .mobile-sidebar-toggle {
+            display: none !important;
+            position: fixed;
+            top: .75rem;
+            left: .75rem;
+            z-index: 45;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: .7rem;
+            background: rgba(15, 23, 42, .3);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, .16);
+        }
+        @media (max-width: 900px) {
+            #app > header, #app > main { margin-left: 0; max-width: none; }
+            #app > header > .max-w-7xl { padding: .75rem 5.5rem .75rem .75rem; }
+            .mobile-sidebar-toggle {
+                display: grid !important;
+                place-items: center;
+            }
+            .dashboard-sidebar {
+                display: block;
+                width: min(15rem, 84vw);
+                transform: translateX(-100%);
+                transition: transform .25s ease;
+                box-shadow: 8px 0 24px rgba(15, 23, 42, .16);
+            }
+            body.sidebar-open .dashboard-sidebar { transform: translateX(0); }
+            body.sidebar-open::after {
+                content: "";
+                position: fixed;
+                inset: 0;
+                z-index: 34;
+                background: rgba(15, 23, 42, .35);
+                pointer-events: none;
+            }
+        }
+        #login-screen { display: none; }
+        body.auth-locked #login-screen { display: flex; }
+        #login-screen {
+            overflow: hidden;
+            gap: 0;
+            background:
+                linear-gradient(135deg, rgba(18, 30, 104, .9), rgba(104, 22, 185, .9)),
+                #4314a8;
+            background-image:
+                linear-gradient(135deg, rgba(94, 234, 212, .24) 0 16%, transparent 16% 28%, rgba(125, 211, 252, .2) 28% 42%, transparent 42% 58%, rgba(45, 212, 191, .2) 58% 72%, transparent 72%),
+                linear-gradient(45deg, transparent 0 28%, rgba(20, 184, 166, .35) 28% 45%, transparent 45% 62%, rgba(56, 189, 248, .25) 62% 78%, transparent 78%),
+                linear-gradient(135deg, #0f766e, #159aab 58%, #2ca6b5 100%);
+        }
+        #login-screen .login-showcase {
+            position: relative;
+            z-index: 1;
+            width: min(28rem, 42vw);
+            min-height: 28rem;
+            padding: 3rem;
+            color: #ecfeff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: linear-gradient(160deg, rgba(15, 23, 42, .45), rgba(20, 184, 166, .16));
+            border: 1px solid rgba(153, 246, 228, .24);
+            border-radius: 1.5rem;
+            animation: login-content-in .3s ease-out both;
+            transition: opacity .6s ease, transform .6s ease, filter .6s ease;
+        }
+        #login-screen .login-showcase .login-start-button {
+            width: fit-content;
+            margin-top: 1.75rem;
+            padding: .75rem 1.25rem;
+            border: 1px solid rgba(153, 246, 228, .35);
+            border-radius: .75rem;
+            background: rgba(20, 184, 166, .2);
+            color: #ecfeff;
+            font-weight: 700;
+            transition: transform .2s ease, background-color .2s ease;
+        }
+        #login-screen .login-showcase .login-start-button:hover {
+            transform: translateY(-2px);
+            background: rgba(20, 184, 166, .38);
+        }
+        #login-screen .login-showcase::after {
+            content: '';
+            position: absolute;
+            width: 9rem;
+            height: 9rem;
+            right: 2rem;
+            top: 2rem;
+            border: 1px solid rgba(94, 234, 212, .25);
+            border-radius: 45% 55% 60% 40%;
+            transform: rotate(25deg);
+        }
+        .login-showcase .showcase-icon {
+            width: 4.5rem;
+            height: 4.5rem;
+            display: grid;
+            place-items: center;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(153, 246, 228, .35);
+            border-radius: 1.25rem;
+            background: rgba(20, 184, 166, .2);
+            color: #99f6e4;
+            font-size: 2rem;
+        }
+        .login-showcase h2 { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+        .login-showcase p { margin-top: .75rem; color: #bae6fd; line-height: 1.6; }
+        #login-screen::before,
+        #login-screen::after {
+            content: '';
+            position: absolute;
+            border: 1px solid rgba(94, 234, 212, .18);
+            border-radius: 999px;
+            pointer-events: none;
+            animation: login-orbit 12s linear infinite;
+        }
+        #login-screen::before { width: 28rem; height: 28rem; }
+        #login-screen::after { width: 42rem; height: 42rem; animation-direction: reverse; animation-duration: 18s; }
+        #login-screen form {
+            position: relative;
+            z-index: 1;
+            width: min(24rem, 90vw);
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(120%);
+            filter: blur(10px);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, .75);
+            background: #fff;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 20px 36px rgba(20, 7, 55, .4);
+            border-radius: 1.5rem;
+            transition: opacity .6s ease, transform .6s cubic-bezier(.22, 1, .36, 1), filter .6s ease, visibility 0s linear .6s;
+        }
+        #login-screen.login-active .login-showcase {
+            opacity: .24;
+            filter: blur(3px);
+            transform: translateX(-18%) scale(.96);
+        }
+        #login-screen.login-active form {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            position: absolute;
+            transform: translateX(0);
+            filter: blur(0);
+            transition-delay: 0s;
+        }
+        @media (max-width: 760px) {
+            #login-screen {
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+                min-height: 100vh;
+                min-height: 100dvh;
+                box-sizing: border-box;
+            }
+            #login-screen .login-showcase {
+                width: min(24rem, 90vw);
+                min-height: auto;
+                padding: 1.5rem;
+                border-radius: 1.5rem;
+                align-items: center;
+                margin: 0 auto;
+                text-align: center;
+            }
+            .login-showcase .showcase-icon,
+            .login-showcase p { display: none; }
+            .login-showcase h2 { font-size: 1.35rem; }
+            #login-screen .login-showcase .login-start-button { margin-left: auto; margin-right: auto; }
+            #login-screen form {
+                width: min(24rem, calc(100vw - 2rem));
+                max-height: calc(100vh - 2rem);
+                max-height: calc(100dvh - 2rem);
+                overflow-y: auto;
+                border-radius: 1.5rem;
+                box-sizing: border-box;
+            }
+            #login-screen.login-active .login-showcase { transform: translateY(-18%) scale(.96); }
+            #login-screen.login-active form {
+                position: fixed;
+                left: 50%;
+                top: 50%;
+                margin: 0;
+                transform: translate3d(-50%, -50%, 0);
+            }
+        }
+        /* Touchscreen phones and tablets use a viewport-centered login card. */
+        @media (pointer: coarse) {
+            #login-screen.login-active form {
+                position: fixed;
+                left: 50%;
+                top: 50%;
+                width: min(24rem, calc(100vw - 2rem));
+                max-height: calc(100vh - 2rem);
+                max-height: calc(100dvh - 2rem);
+                margin: 0;
+                overflow-y: auto;
+                transform: translate3d(-50%, -50%, 0);
+                box-sizing: border-box;
+            }
+        }
+        #login-screen form::before {
+            display: none;
+        }
+        #login-screen form > div:first-child {
+            animation: login-content-in .6s .15s ease-out both;
+        }
+        #login-screen form > div:first-child > div {
+            animation: login-icon-float 3s ease-in-out infinite;
+        }
+        #login-screen input {
+            border: 0;
+            border-bottom: 2px solid #cbd5e1;
+            border-radius: 0;
+            background: transparent;
+            transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+        }
+        #login-screen form > div:first-child > div {
+            width: 4rem;
+            height: 4rem;
+            margin-bottom: .75rem;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            border: 3px solid #fff;
+            box-shadow: 0 4px 12px rgba(168, 85, 247, .35);
+        }
+        #login-screen form > div:first-child > div i { font-size: 1.65rem; }
+        #login-screen form h1 {
+            color: #43b7d3;
+            font-size: 1.35rem;
+        }
+        #login-screen form > div:nth-child(2) {
+            display: grid;
+            gap: .25rem;
+        }
+        #login-screen form > div:nth-child(2) label {
+            color: #94a3b8;
+            font-size: .65rem;
+        }
+        #login-screen form > div:nth-child(2) input {
+            background: #e5e5e5;
+            border: 0;
+            border-radius: 999px;
+            padding: .65rem 1rem;
+        }
+        #login-screen form > div:nth-child(2) input::placeholder { color: #9ca3af; }
+        #login-screen form > button {
+            border-radius: 999px;
+            background: #43b7d3;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-size: .7rem;
+        }
+        #login-screen input:focus {
+            transform: translateY(-1px);
+            border-bottom-color: #0f766e;
+            box-shadow: 0 2px 0 #0f766e;
+        }
+        #login-screen button {
+            transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
+        }
+        #login-screen button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 18px rgba(13, 148, 136, .28);
+        }
+        @keyframes login-card-in {
+            from { opacity: 0; transform: translateY(28px) scale(.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes login-content-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes login-icon-float {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(-5px) rotate(2deg); }
+        }
+        @keyframes login-orbit {
+            from { transform: rotate(0deg) translateX(18px) rotate(0deg); }
+            to { transform: rotate(360deg) translateX(18px) rotate(-360deg); }
+        }
+        @keyframes login-shimmer {
+            from { background-position: 0 0; }
+            to { background-position: 200% 0; }
+        }
+        @keyframes dashboard-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #login-screen::before, #login-screen::after,
+            #login-screen form, #login-screen form > div:first-child,
+            #login-screen form > div:first-child > div,
+            body:not(.auth-locked) #app { animation: none; }
+        }
+        #report-menu-select { color: #334155; background: #fff; border-color: #cbd5e1; }
+        #report-menu-select:hover { background: #fef3c7; border-color: #f59e0b; }
+        .compact-action span { display: none; }
+        .logout-corner { position: absolute; right: 1rem; top: 1rem; z-index: 40; }
+        body.viewer-mode #add-product-form,
+        body.viewer-mode #btn-pay,
+        body.viewer-mode #btn-debe,
+        body.viewer-mode button[onclick*="updateCartQty"],
+        body.viewer-mode button[onclick*="clearCart"],
+        body.viewer-mode button[onclick*="deleteSelectedCartItems"],
+        body.viewer-mode button[onclick*="deleteReportTransaction"] { display: none !important; }
+        #report-menu-select option,
+        #sidebar-report-menu-select option { background: #fff; color: #334155; }
+        #sidebar-report-menu-select option:not([value=""]) { font-weight: 700; }
+        #sidebar-report-menu-select option:hover,
+        #sidebar-report-menu-select option:focus {
+            background: #c2410c;
+            color: #fff;
+        }
+        #admin-mode-button.admin-active { background: #059669; }
+
+        @media (max-width: 640px) {
+            body { background: #f1f5f9; }
+            header { position: sticky; }
+            .logout-corner { right: .75rem; top: .75rem; }
+            header .max-w-7xl { padding: .75rem; gap: .75rem; }
+            header .max-w-7xl > button:first-child { padding-right: 3rem; }
+            header .max-w-7xl > button:first-child h1 { font-size: 1.05rem; }
+            header .max-w-7xl > button:first-child p { font-size: .65rem; }
+            header .max-w-7xl > div:last-child {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: .5rem;
+                padding-top: .75rem;
+            }
+            header .max-w-7xl > div:last-child > div:first-child {
+                grid-column: 1 / -1;
+                justify-content: center;
+                font-size: .7rem;
+            }
+            header .max-w-7xl > div:last-child > select,
+            header .max-w-7xl > div:last-child > button {
+                width: 100%;
+                min-height: 2.5rem;
+                justify-content: center;
+                padding: .55rem .65rem;
+                font-size: .72rem;
+            }
+            main { padding: .75rem; gap: .75rem; }
+            main > section { gap: .75rem; }
+            main > section > div,
+            main section > div.bg-white {
+                border-radius: 1rem;
+                padding: 1rem;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, .06);
+            }
+            main > section:first-child { display: contents; }
+            main > section:first-child > div:first-child { order: 2; }
+            main > section:first-child > div:nth-child(2) { order: 1; }
+            main > section:last-child { order: 3; }
+            main > section:last-child > div {
+                position: static;
+                height: 32rem;
+                max-height: none;
+            }
+            #products-grid { max-height: 22rem; }
+            #cart-items { min-height: 7rem; }
+            #cart-items:has(#empty-cart-msg) { min-height: 7rem; }
+            input, select, button { min-height: 2.75rem; }
+            #btn-pay, #btn-debe { min-height: 3rem; }
+            #report-modal { padding: .5rem; }
+            #report-modal > div {
+                width: 100%;
+                max-height: 94vh;
+                border-radius: 1rem;
+            }
+            #report-modal > div > .p-4:last-child {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: .5rem;
+                padding: .75rem;
+            }
+            #report-modal > div > .p-4:last-child > div {
+                grid-column: 1 / -1;
+                display: grid;
+                grid-template-columns: auto minmax(0, 1fr);
+                gap: .5rem;
+                width: 100%;
+                margin-right: 0;
+            }
+            #report-modal > div > .p-4:last-child > div label {
+                align-self: center;
+            }
+            #report-modal > div > .p-4:last-child > div select,
+            #report-modal > div > .p-4:last-child > div button {
+                width: 100%;
+                min-width: 0;
+            }
+            #report-modal > div > .p-4:last-child > div button {
+                grid-column: 1 / -1;
+            }
+            #report-modal > div > .p-4:last-child > button {
+                grid-column: 1 / -1;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="auth-locked bg-slate-100 text-slate-800 antialiased min-h-screen">
+
+    <div id="login-screen" class="fixed inset-0 bg-slate-900 flex items-center justify-center p-4 z-[100]">
+        <div class="login-showcase">
+            <div class="showcase-icon"><i class="fa-solid fa-store"></i></div>
+            <h2>Bem-vindu ba Keos</h2>
+            <p>Jestaun vendas, produtu no debe iha fatin ida deit.</p>
+            <button type="button" class="login-start-button" onclick="showLoginForm()">
+                Login ba sistema <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+        <form onsubmit="loginUser(event)" class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+            <div class="text-center">
+                <div class="mx-auto mb-3 bg-teal-600 w-14 h-14 rounded-xl flex items-center justify-center text-white">
+                    <i class="fa-solid fa-store text-2xl"></i>
+                </div>
+                <h1 class="text-xl font-bold text-slate-900">Asesu gora</h1>
+                <p class="text-sm text-slate-500 mt-1">Keos - Login asesu ba Sistema</p>
+            </div>
+            <div class="space-y-3">
+                <label for="login-username">Usernaran *</label>
+                <input type="text" id="login-username" autocomplete="username" required placeholder="Usernaran"
+                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <label for="login-password">Password *</label>
+                <input type="password" id="login-password" autocomplete="current-password" required placeholder="Password"
+                    class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+            <p id="login-error" class="hidden text-sm text-red-600 text-center">Username ka password sala.</p>
+            <button type="submit" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 rounded-lg transition">
+                Tama
+            </button>
+        </form>
+    </div>
+
+    <div id="app" class="min-h-screen flex flex-col">
+        <button type="button" class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()" aria-label="Buka menu">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        
+        <!-- Header Utama -->
+        <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30 relative">
+            <button onclick="logoutUser()" class="logout-corner compact-action bg-red-700 hover:bg-red-800 text-white px-3.5 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition shadow-sm" title="Log Out">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Log Out</span>
+            </button>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col items-stretch gap-2.5">
+                
+                <button onclick="goToDashboard()" class="flex items-center gap-3 text-left self-start hover:opacity-90 transition cursor-pointer" title="Dashboard utama">
+                    <div class="bg-teal-600 p-2 rounded-lg text-white">
+                        <i class="fa-solid fa-store text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">Keos</h1>
+                        <p class="text-xs text-slate-400">Sistema Jestaun Faan no Debe</p>
+                    </div>
+                </button>
+
+                <!-- Tanggal, Relatóriu, Debe, dan Backup -->
+                <div class="flex flex-wrap items-center gap-2 border-t border-slate-800 pt-2.5">
+                    <div class="bg-slate-800 border border-slate-700 px-3.5 py-1.5 rounded-lg text-sm flex items-center gap-2 shadow-inner">
+                        <i class="fa-regular fa-calendar-days text-teal-400"></i>
+                        <span id="current-date-display" class="text-slate-300 font-medium"></span>
+                        <span class="date-time-separator text-slate-600">|</span>
+                        <span id="current-time-display" class="text-slate-300 font-medium"></span>
+                    </div>
+
+                    <select id="report-menu-select" onchange="handleReportMenuSelection()" class="report-menu-default hover:brightness-110 border px-3.5 py-1.5 rounded-lg text-sm font-medium shadow-sm transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-300">
+                        <option value="">Relatorio</option>
+                        <option value="cash">Relatorio Selu Direta</option>
+                        <option value="debe">Relatorio Debe</option>
+                        <option value="all">Relatorio Geral</option>
+                    </select>
+                    <!-- Debe Management Button (Clickable) -->
+                    <button onclick="openDebeModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-slate-200 flex items-center gap-2 transition cursor-pointer">
+                        <i class="fa-solid fa-book-bookmark text-amber-400"></i>
+                        <span>Debe</span>
+                    </button>
+
+                    <button onclick="openFamilyUseModal()" class="bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition shadow-sm">
+                        <i class="fa-solid fa-people-roof"></i>
+                        <span>Família</span>
+                    </button>
+
+                    <!-- Backup/Import Menu -->
+                    <select id="backup-menu-select" onchange="handleBackupMenuSelection()" class="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="">Hili Menu</option>
+                        <option value="backup">⬇ Backup</option>
+                        <option value="import">⬆ Import</option>
+                    </select>
+                    <input type="file" id="backup-file-input" accept="application/json,.json" onchange="importBackup(event)" class="hidden">
+
+                    <button id="admin-mode-button" onclick="toggleAdminMode()" class="compact-action bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition shadow-sm" title="Mode Admin/Viewer">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>Viewer</span>
+                    </button>
+                </div>
+
+            </div>
+        </header>
+
+        <!-- Main Content Area: Sisi Kiri (Catalog/Forms) & Sisi Kanan (Kasir Cart) -->
+        <aside class="dashboard-sidebar" aria-label="Menu dashboard">
+            <div class="dashboard-sidebar-brand"><i class="fa-solid fa-store"></i><span>Keos</span></div>
+            <div class="dashboard-sidebar-label">Overview</div>
+            <button class="active" onclick="selectDashboardMenu(this, 'dashboard')"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></button>
+            <div class="dashboard-sidebar-label">Jestaun</div>
+            <button onclick="selectDashboardMenu(this, 'kasir')"><i class="fa-solid fa-cart-shopping"></i><span>Kasir</span></button>
+            <button onclick="selectDashboardMenu(this, 'produk')"><i class="fa-solid fa-box-open"></i><span>Produtu</span></button>
+            <button onclick="selectDashboardMenu(this, 'debe')"><i class="fa-solid fa-book-bookmark"></i><span>Debe</span></button>
+            <button onclick="openFamilyUseModal()"><i class="fa-solid fa-people-roof"></i><span>Família</span></button>
+            <div class="dashboard-report-menu">
+                <i class="fa-solid fa-chart-column"></i>
+                <select id="sidebar-report-menu-select" class="report-sidebar-select" onchange="handleSidebarReportSelection()">
+                    <option value="">Relatorio</option>
+                    <option value="cash">Relatorio Selu Direta</option>
+                    <option value="debe">Relatorio Debe</option>
+                    <option value="all">Relatorio Geral</option>
+                </select>
+            </div>
+            <div class="dashboard-sidebar-label">Sistema</div>
+            <button onclick="exportData()"><i class="fa-solid fa-cloud-arrow-down"></i><span>Backup</span></button>
+            <button onclick="document.getElementById('backup-file-input').click()"><i class="fa-solid fa-cloud-arrow-up"></i><span>Import</span></button>
+            <button onclick="toggleAdminMode()"><i class="fa-solid fa-lock"></i><span>Admin / Viewer</span></button>
+            <button onclick="logoutUser()" class="sidebar-logout"><i class="fa-solid fa-right-from-bracket"></i><span>Log Out</span></button>
+        </aside>
+        <main id="dashboard-top" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-5 gap-5 lg:gap-6 items-start">
+            
+            <!-- Kolom Kiri / Utama: Katalog Produk & Form Tambah (2/3 width) -->
+            <section class="lg:col-span-3 space-y-5 flex flex-col">
+                
+                <!-- Section Produtu -->
+                <div id="product-section" class="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-200 order-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <span>Produtu</span>
+                        </h2>
+                        <span class="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full" id="product-count">5 Items</span>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative mb-5">
+                        <input type="text" id="search-input" onkeyup="filterProducts()" 
+                            placeholder="Buka naran produtu..." 
+                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                    </div>
+
+                    <!-- Tabela Lista Produk -->
+                    <div id="products-grid" class="max-h-[28rem] overflow-y-auto overflow-x-auto border border-slate-200 rounded-lg">
+                        <!-- Rows added dynamically -->
+                    </div>
+                </div>
+
+                <!-- Section Aumenta produtu foun -->
+                <div id="add-product-section" class="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-200 order-1">
+                    <h2 class="text-lg font-bold text-slate-900 mb-4">
+                        <span>Aumenta produtu foun</span>
+                    </h2>
+
+                    <form id="add-product-form" onsubmit="handleAddProduct(event)" novalidate class="space-y-4">
+                        <div class="flex gap-2">
+                            <input type="text" id="input-barcode" placeholder="Barcode" autocomplete="off"
+                                class="min-w-0 flex-1 px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white">
+                            <button type="button" onclick="openBarcodeScanner()" class="shrink-0 px-3 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-sm font-semibold transition">
+                                <i class="fa-solid fa-barcode mr-1"></i> Scan
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <input type="text" id="input-naran" required placeholder="Naran Produto" 
+                                    class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white">
+                            </div>
+                            <div>
+                                <input type="number" step="0.001" min="0" id="input-folin" required placeholder="Folin Sasan" 
+                                    class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <input type="number" id="input-isi" placeholder="Qtd" 
+                                    class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white">
+                            </div>
+                            <div class="hidden">
+                                <input type="text" id="input-unit" placeholder="Qtd"
+                                    class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white">
+                            </div>
+                            <div>
+                                <button type="submit" class="w-full bg-teal-800 hover:bg-teal-900 text-white font-bold py-2 px-4 rounded-lg text-sm transition shadow-sm">
+                                    Aumenta
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                </div>
+
+            </section>
+
+            <!-- Kolom Kanan / Sidebar Keranjang Kasir (1/3 width) -->
+            <section id="cashier-section" class="lg:col-span-2 lg:sticky lg:top-24">
+                <div class="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col lg:h-[calc(100vh-7rem)] lg:max-h-[42rem]">
+                    
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-cart-shopping text-teal-600"></i>
+                            <span>Lista Sasan</span>
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <button onclick="deleteSelectedCartItems()" id="delete-selected-cart" disabled class="text-xs text-red-600 hover:underline font-medium disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed">Hamoos selecionadu</button>
+                            <button onclick="clearCart()" class="text-xs text-red-600 hover:underline font-medium">Hamoos hotu</button>
+                        </div>
+                    </div>
+
+                    <!-- Cart List -->
+                    <div id="cart-items" class="flex-1 overflow-y-auto my-4 space-y-3 pr-1">
+                        <div id="empty-cart-msg" class="text-center py-10 text-slate-400">
+                            <i class="fa-solid fa-basket-shopping text-4xl mb-2 block opacity-40"></i>
+                            <p class="text-sm">Klik produtu iha karuk atu aumenta ba keranjang</p>
+                        </div>
+                    </div>
+
+                    <!-- Cart Summary Footer -->
+                    <div class="pt-4 border-t border-slate-200 space-y-3 bg-slate-50 -mx-5 -mb-5 p-5 rounded-b-xl">
+                        <div class="flex justify-between items-center text-sm text-slate-600">
+                            <span>Subtotal:</span>
+                            <span class="font-semibold text-slate-800" id="cart-subtotal">$0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center text-base font-bold text-slate-900">
+                            <span>Total Selu:</span>
+                            <span class="text-lg text-teal-700" id="cart-total">$0.00</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <button onclick="processTransaction('dinheiro')" id="btn-pay" disabled
+                                class="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-3 rounded-lg transition shadow-sm text-xs flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-money-bill-wave"></i>
+                                <span>Selu Direta</span>
+                            </button>
+                            <button onclick="processDebeFromCart()" id="btn-debe" disabled
+                                class="bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-3 rounded-lg transition shadow-sm text-xs flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-book-bookmark"></i>
+                                <span>Rai ba Debe</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL 1: RELATORIU OHIN (LAPORAN HARIAN) -->
+    <div id="report-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-teal-400"></i>
+                    <h3 id="report-modal-title" class="font-bold text-lg">Relatóriu Vendas Ohin Loron</h3>
+                </div>
+                <button onclick="closeReportModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-4 flex-1">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-teal-50 border border-teal-200 p-3 rounded-lg text-center">
+                        <span class="text-xs text-teal-700 font-medium block">Total Vendas</span>
+                        <span class="text-xl font-bold text-teal-900" id="report-modal-total-vendas">$1.00</span>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg text-center">
+                        <span class="text-xs text-blue-700 font-medium block">Transasaun</span>
+                        <span class="text-xl font-bold text-blue-900" id="report-modal-trans-count">1</span>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg text-center">
+                        <span class="text-xs text-amber-700 font-medium block">Total Debe</span>
+                        <span class="text-xl font-bold text-amber-900" id="report-modal-total-debe">$0.00</span>
+                    </div>
+                </div>
+
+                <h4 class="font-bold text-slate-800 text-sm pt-2 border-b pb-2">Lista Transasaun Ohin</h4>
+                <div class="border rounded-lg overflow-hidden">
+                    <table class="w-full text-xs text-left text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold uppercase">
+                            <tr>
+                                <th class="p-2.5">Data</th>
+                                <th class="p-2.5">Oras</th>
+                                <th class="p-2.5">Kliente</th>
+                                <th class="p-2.5">Produtu</th>
+                                <th class="p-2.5 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-trans-list" class="divide-y divide-slate-200">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="report-chart-panel" class="border border-slate-200 rounded-lg p-4 bg-white">
+                    <h4 class="font-bold text-slate-800 text-sm mb-3">Produtu Sosa Barak</h4>
+                    <div class="relative h-64">
+                        <canvas id="product-sales-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t flex justify-end gap-2">
+                <div class="flex items-center gap-2 mr-auto">
+                    <label for="report-download-format" class="text-xs font-semibold text-slate-600">Download:</label>
+                    <select id="report-download-format" class="px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                        <option value="excel">Excel</option>
+                        <option value="pdf">PDF</option>
+                    </select>
+                    <button onclick="downloadReport()" class="px-4 py-2 bg-teal-700 text-white text-xs font-semibold rounded-lg hover:bg-teal-800">
+                        <i class="fa-solid fa-download mr-1"></i>Download
+                    </button>
+                    <button onclick="printReport()" class="px-4 py-2 bg-blue-700 text-white text-xs font-semibold rounded-lg hover:bg-blue-800">
+                        <i class="fa-solid fa-print mr-1"></i>Print
+                    </button>
+                </div>
+                <button onclick="closeReportModal()" class="px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-700">Taka</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTU SASAN FAMÍLIA -->
+    <div id="family-use-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            <div class="bg-blue-800 text-white p-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-people-roof text-blue-200"></i>
+                    <h3 class="font-bold text-lg">Sasan Família</h3>
+                </div>
+                <button onclick="closeFamilyUseModal()" class="text-blue-200 hover:text-white p-1"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-5 flex-1 bg-slate-50">
+                <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-3 shadow-sm">
+                    <p class="text-xs text-blue-800">Registu sasan ne'ebé família foti iha keos. Ida-ne'e la tama ba vendas ka debe.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Naran família *</label>
+                            <input type="text" id="family-use-person" placeholder="Ezemplu: Jose" class="w-full px-3 py-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Data</label>
+                            <input type="date" id="family-use-date" class="w-full px-3 py-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" for="family-use-destination">Destinu registu</label>
+                        <select id="family-use-destination" class="w-full px-3 py-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="family">Registu Família deit</option>
+                            <option value="debe">Tama ba Debe</option>
+                        </select>
+                    </div>
+                    <div id="family-use-items" class="space-y-2"></div>
+                    <button onclick="addFamilyUseItemRow()" type="button" class="text-xs bg-white border border-blue-300 text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-semibold transition">
+                        <i class="fa-solid fa-plus mr-1"></i> Aumenta Produtu
+                    </button>
+                    <input type="text" id="family-use-note" placeholder="Nota (opsional), ezemplu: café da manhã" class="w-full px-3 py-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <button onclick="saveFamilyUse()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-lg text-xs transition shadow-sm">Registu</button>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center justify-between">
+                        <span>Lista Sasan</span>
+                        <span id="family-use-summary" class="text-xs font-normal text-slate-500"></span>
+                    </h4>
+                    <div id="family-use-list" class="space-y-3"></div>
+                </div>
+            </div>
+            <div class="p-4 bg-white border-t flex justify-end">
+                <button onclick="closeFamilyUseModal()" class="px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-700">Taka</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: JESTAUN DEBE (MANAJEMEN HUTANG DENGAN AUTO HARGA PER BUNGKUS/BATANG) -->
+    <div id="debe-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            <!-- Header Modal -->
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-book-bookmark text-amber-400"></i>
+                    <h3 class="font-bold text-lg">Jestaun Debe</h3>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="deleteSelectedPaidDebe()" id="delete-selected-debe" disabled class="text-xs text-amber-300 hover:text-white disabled:text-slate-500 disabled:cursor-not-allowed">Hamoos Debe</button>
+                    <button onclick="closeDebeModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-5 flex-1 bg-slate-50">
+                <!-- Form Tambah Debe Baru dengan Pilihan Produk Auto-Calculate -->
+                <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-3 shadow-sm">
+                    <h4 class="font-bold text-amber-900 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus text-amber-700"></i>
+                        <span>Regista Debe Foun</span>
+                    </h4>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Naran Debe *</label>
+                            <input type="text" id="debe-form-customer" placeholder="Naran kliente (ezemplu: Joao)" 
+                                class="w-full px-3 py-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Data Debe</label>
+                            <input type="date" id="debe-form-date" 
+                                class="w-full px-3 py-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Debe Items (Pilih produk & isi unit/batang, harga langsung muncul) -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold text-slate-700">Produtu Sasan:</label>
+                        <div id="debe-items-container" class="space-y-2">
+                            <!-- Rows inserted dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2">
+                        <button onclick="addDebeItemRow()" type="button" 
+                            class="text-xs bg-white border border-amber-300 text-amber-800 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-semibold transition">
+                            <i class="fa-solid fa-plus mr-1"></i> Aumenta Produtu
+                        </button>
+                        <div class="text-right">
+                            <span class="text-xs text-slate-600 font-semibold">Total Debe:</span>
+                            <span id="debe-form-total" class="font-bold text-amber-900 text-base ml-2">$0.00</span>
+                        </div>
+                    </div>
+
+                    <button onclick="saveNewDebe()" 
+                        class="w-full bg-amber-700 hover:bg-amber-800 text-white font-bold py-2.5 rounded-lg text-xs transition shadow-sm">
+                        Rai Debe
+                    </button>
+                </div>
+
+                <!-- Daftar Card Debe -->
+                <div>
+                    <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center justify-between">
+                        <span>Lista Debe</span>
+                        <span class="text-xs font-normal text-slate-500">Total Seidauk Selu: <strong id="debe-modal-unpaid-sum" class="text-red-600">$0.00</strong></span>
+                    </h4>
+                    <div id="debe-cards-list" class="space-y-3">
+                        <!-- Dynamic Debe Cards -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white border-t flex justify-end">
+                <button onclick="closeDebeModal()" class="px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-700">Taka</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CICILAN DEBE (PAGAMENTU PARSIÁL) -->
+    <div id="installment-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-[60]">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-slate-900 text-base" title="Cicil Debe" aria-label="Cicil Debe"><i class="fa-solid fa-coins"></i></h3>
+                <button onclick="closeInstallmentModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div id="installment-info" class="text-xs space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <!-- Info Devedor -->
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block">Valór Pagamentu ($) *</label>
+                    <input type="number" step="0.01" min="0.01" id="installment-amount" oninput="updateInstallmentPreview()" placeholder="Ezemplu: 10.00" 
+                        class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <div id="installment-preview" class="mt-2 rounded-lg p-2.5 text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200"></div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-700 mb-1 block">Nota / Catatan (Opsional)</label>
+                    <input type="text" id="installment-note" placeholder="Ezemplu: Cicilan ke-1" 
+                        class="w-full px-3 py-2 border rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeInstallmentModal()" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50">Kansela</button>
+                <button onclick="submitInstallment()" id="submit-installment" disabled title="Rai Pagamentu" aria-label="Rai Pagamentu" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition"><i class="fa-solid fa-check"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: PAGAMENTU DIRETA -->
+    <div id="cash-payment-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-slate-900 text-base">Pagamentu Direta</h3>
+                <button onclick="closeCashPaymentModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <span class="text-sm font-semibold text-slate-600">Total Selu:</span>
+                <span id="cash-payment-total" class="text-xl font-bold text-teal-700">$0.00</span>
+            </div>
+
+            <div>
+                <label for="cash-payment-amount" class="text-xs font-semibold text-slate-700 mb-1 block">Osan simu ($)</label>
+                <input type="number" step="0.01" min="0" id="cash-payment-amount" oninput="updateCashPaymentStatus()" placeholder="Ezemplu: 1.00"
+                    class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            </div>
+
+            <div id="cash-payment-status" class="hidden rounded-lg p-3 text-sm font-semibold"></div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeCashPaymentModal()" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50">Kansela</button>
+                <button onclick="confirmCashPayment()" id="confirm-cash-payment" disabled class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition">Konfirma Selu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT PRODUK -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-lg text-slate-900">Hadi'a Produtu</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="edit-product-form" onsubmit="saveEditProduct(event)" class="space-y-3">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Naran Produtu</label>
+                    <input type="text" id="edit-naran" required class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Barcode</label>
+                    <input type="text" id="edit-barcode" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Folin ($ per unit/batang)</label>
+                    <input type="number" step="0.001" id="edit-folin" required class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Qtd Name (ezemplu: batang / bungkus)</label>
+                    <input type="text" id="edit-unit" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 border rounded-lg text-xs font-semibold hover:bg-slate-50">Kansela</button>
+                    <button type="submit" class="px-4 py-2 bg-teal-700 text-white rounded-lg text-xs font-bold hover:bg-teal-800">Rai Mudansa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="barcode-scanner-modal" class="fixed inset-0 bg-slate-900/70 hidden items-center justify-center z-[80] p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-4 space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-slate-900">Scan Barcode</h3>
+                <button type="button" onclick="closeBarcodeScanner()" class="text-slate-500 hover:text-slate-800" aria-label="Tutup scanner">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <label class="flex items-center justify-between gap-3 text-sm font-medium text-slate-700">
+                <span>Pilih kamera</span>
+                <select id="barcode-camera-select" onchange="switchBarcodeCamera(this.value)" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+                    <option value="environment">Kamera belakang</option>
+                    <option value="user">Kamera depan</option>
+                </select>
+            </label>
+            <div id="barcode-reader" class="w-full overflow-hidden rounded-lg"></div>
+            <p class="text-xs text-slate-500">Arahkan kamera pilihanmu ke barcode produk.</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50 border border-slate-700">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-msg" class="text-sm font-medium">Notification</span>
+    </div>
+
+    <!-- Validation Message -->
+    <div id="validation-modal" class="fixed inset-0 bg-slate-900/20 hidden flex items-center justify-center z-[80] p-4">
+        <div class="bg-white w-full max-w-sm rounded-lg shadow-2xl border border-slate-300 overflow-hidden">
+            <div class="px-4 py-2 border-b border-slate-200 flex items-center justify-between">
+                <span class="text-sm font-semibold text-slate-800">Informasaun</span>
+                <button onclick="closeValidationMessage()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="px-4 py-5 flex items-center gap-3">
+                <i class="fa-solid fa-circle-exclamation text-orange-500 text-xl"></i>
+                <span id="validation-message" class="text-sm text-slate-700">Prenche lai koluna nee.</span>
+            </div>
+            <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button onclick="closeValidationMessage()" class="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-sm">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // Product data is entered by the user or restored from a backup.
+        let products = [];
+
+        const productsStorageKey = "keosProducts";
+        const debeStorageKey = "keosDebe";
+        const transactionsStorageKey = "keosTransactions";
+        const cartStorageKey = "keosCart";
+        const familyUseStorageKey = "keosFamilyUse";
+        const legacyStoragePrefix = "keos\u0041ma\u004cita";
+
+        function readStoredData(key) {
+            const currentData = localStorage.getItem(key);
+            if (currentData !== null) return currentData;
+
+            const legacyKey = `${legacyStoragePrefix}${key.substring("keos".length)}`;
+            const legacyData = localStorage.getItem(legacyKey);
+            if (legacyData !== null) {
+                localStorage.setItem(key, legacyData);
+            }
+            return legacyData;
+        }
+
+        function loadProducts() {
+            try {
+                const savedProducts = JSON.parse(readStoredData(productsStorageKey));
+                if (Array.isArray(savedProducts)) {
+                    products = savedProducts.map(product => {
+                        if (!product.isi && /^\d+$/.test(String(product.unit || ''))) {
+                            return { ...product, isi: String(product.unit), unit: 'plastik' };
+                        }
+                        return product;
+                    });
+                    saveProducts();
+                }
+            } catch (error) {
+                localStorage.removeItem(productsStorageKey);
+            }
+        }
+
+        function saveProducts() {
+            localStorage.setItem(productsStorageKey, JSON.stringify(products));
+        }
+
+        function loadDebeList() {
+            try {
+                const savedDebeList = JSON.parse(readStoredData(debeStorageKey));
+                if (Array.isArray(savedDebeList)) {
+                    debeList = savedDebeList;
+                }
+            } catch (error) {
+                localStorage.removeItem(debeStorageKey);
+            }
+        }
+
+        function saveDebeList() {
+            localStorage.setItem(debeStorageKey, JSON.stringify(debeList));
+        }
+
+        function loadTransactions() {
+            try {
+                const savedTransactions = JSON.parse(readStoredData(transactionsStorageKey));
+                if (Array.isArray(savedTransactions)) {
+                    const today = new Date().toISOString().split('T')[0];
+                    transactions = savedTransactions.map(transaction => ({ ...transaction, data: transaction.data || today, tipe: transaction.tipe || 'cash' }));
+                    totalTransasaun = transactions.length;
+                    totalVendas = transactions.reduce((sum, transaction) => sum + transaction.total, 0);
+                }
+            } catch (error) {
+                localStorage.removeItem(transactionsStorageKey);
+            }
+        }
+
+        function saveTransactions() {
+            localStorage.setItem(transactionsStorageKey, JSON.stringify(transactions));
+        }
+
+        function loadCart() {
+            try {
+                const savedCart = JSON.parse(readStoredData(cartStorageKey));
+                if (Array.isArray(savedCart)) {
+                    cart = savedCart;
+                }
+            } catch (error) {
+                localStorage.removeItem(cartStorageKey);
+            }
+        }
+
+        function saveCart() {
+            localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+        }
+
+        function goToDashboard() {
+            document.querySelectorAll('.fixed[id$="-modal"]').forEach(modal => {
+                modal.classList.add('hidden');
+            });
+            currentReportMode = 'all';
+            const reportMenu = document.getElementById('report-menu-select');
+            if (reportMenu) {
+                reportMenu.value = '';
+                updateReportMenuColor('');
+            }
+            closeMobileSidebar();
+            const dashboardTop = document.getElementById('dashboard-top');
+            if (dashboardTop) dashboardTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+            document.body.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function selectDashboardMenu(button, section) {
+            closeMobileSidebar();
+            document.querySelectorAll('.dashboard-sidebar button').forEach(item => item.classList.remove('active'));
+            button.classList.add('active');
+
+            if (section === 'dashboard') {
+                goToDashboard();
+                return;
+            }
+            if (section === 'debe') {
+                openDebeModal();
+                return;
+            }
+            if (section === 'laporan') {
+                openReportModal('all');
+                return;
+            }
+            if (section === 'backup') {
+                exportData();
+                return;
+            }
+
+            const target = document.getElementById(section === 'kasir' ? 'cashier-section' : 'product-section');
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function handleSidebarReportSelection() {
+            const menu = document.getElementById('sidebar-report-menu-select');
+            if (!menu.value) return;
+            openReportModal(menu.value);
+            menu.value = '';
+        }
+
+        function toggleMobileSidebar() {
+            document.body.classList.toggle('sidebar-open');
+        }
+
+        function closeMobileSidebar() {
+            document.body.classList.remove('sidebar-open');
+        }
+
+        function handleBackupMenuSelection() {
+            const menu = document.getElementById('backup-menu-select');
+            if (menu.value === 'backup') {
+                exportData();
+            } else if (menu.value === 'import') {
+                document.getElementById('backup-file-input').click();
+            }
+            menu.value = '';
+        }
+
+        let familyUses = [];
+        const authSessionKey = "keosAuthSession";
+        let adminUnlocked = localStorage.getItem(authSessionKey) === 'active';
+        const adminPinHash = "58ae4668bc9fca7888c51a5b5a8b642dd134a8f5efec2ed4f7f33aed05e4e016";
+        const loginUsername = "Kaininho";
+        const loginPasswordHash = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
+
+        async function loginUser(event) {
+            event.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const error = document.getElementById('login-error');
+
+            if (username !== loginUsername || await hashAdminPin(password) !== loginPasswordHash) {
+                error.classList.remove('hidden');
+                document.getElementById('login-password').select();
+                return;
+            }
+
+            error.classList.add('hidden');
+            adminUnlocked = true;
+            localStorage.setItem(authSessionKey, 'active');
+            document.body.classList.remove('auth-locked');
+            document.getElementById('login-screen').classList.add('hidden');
+            updateAdminModeButton();
+        }
+
+        function showLoginForm() {
+            const screen = document.getElementById('login-screen');
+            screen.classList.add('login-active');
+            window.setTimeout(() => document.getElementById('login-username').focus(), 250);
+        }
+
+        function logoutUser() {
+            adminUnlocked = false;
+            localStorage.removeItem(authSessionKey);
+            document.body.classList.add('auth-locked');
+            document.body.classList.remove('viewer-mode');
+            document.getElementById('login-screen').classList.remove('hidden', 'login-active');
+            document.getElementById('login-password').value = '';
+            document.getElementById('login-error').classList.add('hidden');
+            updateAdminModeButton();
+            document.getElementById('login-username').focus();
+        }
+
+        async function hashAdminPin(pin) {
+            const data = new TextEncoder().encode(pin);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function toggleAdminMode() {
+            if (adminUnlocked) {
+                adminUnlocked = false;
+                updateAdminModeButton();
+                showToast('Mode Viewer ativu.');
+                return;
+            }
+
+            const pin = prompt('Hili PIN Admin:');
+            if (pin === null) return;
+            if (await hashAdminPin(pin) !== adminPinHash) {
+                showValidationMessage('PIN Admin sala.');
+                return;
+            }
+            adminUnlocked = true;
+            updateAdminModeButton();
+            showToast('Mode Admin ativu.');
+        }
+
+        function updateAdminModeButton() {
+            const button = document.getElementById('admin-mode-button');
+            if (!button) return;
+            document.body.classList.toggle('viewer-mode', !adminUnlocked);
+            button.classList.toggle('admin-active', adminUnlocked);
+            button.innerHTML = adminUnlocked
+                ? '<i class="fa-solid fa-lock-open"></i><span>Admin</span>'
+                : '<i class="fa-solid fa-lock"></i><span>Viewer</span>';
+        }
+
+        function requireAdmin() {
+            if (adminUnlocked) return true;
+            showValidationMessage('Mode Viewer: husu Admin atu halo mudansa.');
+            return false;
+        }
+
+        function loadFamilyUses() {
+            try {
+                const savedFamilyUses = JSON.parse(readStoredData(familyUseStorageKey));
+                if (Array.isArray(savedFamilyUses)) {
+                    familyUses = savedFamilyUses;
+                }
+            } catch (error) {
+                localStorage.removeItem(familyUseStorageKey);
+            }
+        }
+
+        function saveFamilyUses() {
+            localStorage.setItem(familyUseStorageKey, JSON.stringify(familyUses));
+        }
+
+        // Helper Format Harga: 2 desimal jika genap sen ($0.75), 3 desimal jika ada pecahan presisi ($0.125)
+        function formatPrice(val) {
+            const centsValue = val * 100;
+            if (Math.abs(centsValue - Math.round(centsValue)) > 0.0001) {
+                return val.toFixed(3);
+            }
+            return val.toFixed(2);
+        }
+
+        function displayUnitLabel(unit) {
+            return String(unit || '').replace(/\bunit\b/gi, 'Qtd');
+        }
+
+        function getPackageSize(product) {
+            if (product.isi) return product.isi;
+            if (product.unit && product.unit.toLowerCase().includes("plastik")) return "4";
+            return "";
+        }
+
+        function isPlasticPackage(product) {
+            return product.unit && product.unit.toLowerCase().includes("plastik");
+        }
+
+        function isPackagePricedProduct(product) {
+            const unit = (product.unit || '').toLowerCase();
+            const isRetailUnit = unit.includes('batang') || product.naran.toLowerCase().includes('rahun');
+            return Boolean(getPackageSize(product)) && !isRetailUnit;
+        }
+
+        function getPackageTotal(product) {
+            const packageSize = getPackageSize(product);
+            if (isPackagePricedProduct(product) && packageSize) return product.folin;
+            if (!packageSize) return product.folin;
+            return product.folin * packageSize;
+        }
+
+        let cart = [];
+        let totalTransasaun = 0;
+        let totalVendas = 0.00;
+
+        let transactions = [];
+
+        let debeList = [];
+        let currentReportMode = 'all';
+
+        let activeInstallmentDebeId = null;
+
+        // Initialize App
+        window.onload = function() {
+            loadProducts();
+            loadTransactions();
+            loadDebeList();
+            loadCart();
+            loadFamilyUses();
+            debeList.filter(debe => debe.total - debe.paid <= 0).forEach(archiveDebeToReport);
+            saveDebeList();
+            initDate();
+            updateAdminModeButton();
+            if (adminUnlocked) {
+                document.body.classList.remove('auth-locked');
+                document.getElementById('login-screen').classList.add('hidden');
+            }
+            renderProducts();
+            renderCart();
+            updateReportBanner();
+            updateDebeHeader();
+            
+            // Set Default Date
+            const diliDate = getDiliDateParts();
+            const diliDateValue = `${diliDate.year}-${String(diliDate.month).padStart(2, '0')}-${String(diliDate.day).padStart(2, '0')}`;
+            document.getElementById('debe-form-date').value = diliDateValue;
+            document.getElementById('family-use-date').value = diliDateValue;
+            addDebeItemRow();
+            addFamilyUseItemRow();
+        };
+
+        function getDiliDateParts(date = new Date()) {
+            const parts = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Dili',
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                weekday: 'short'
+            }).formatToParts(date);
+            return {
+                year: Number(parts.find(part => part.type === 'year').value),
+                month: Number(parts.find(part => part.type === 'month').value),
+                day: Number(parts.find(part => part.type === 'day').value),
+                weekday: date.toLocaleString('en-US', { timeZone: 'Asia/Dili', weekday: 'short' })
+            };
+        }
+
+        function initDate() {
+            const today = getDiliDateParts();
+            const days = ["Domingu", "Segunda", "Tersa", "Kuarta", "Kinta", "Sesta", "Sabadu"];
+            const months = ["Janeiru", "Fevereiru", "Marsu", "Abril", "Maiu", "Juñu", "Julu", "Agostu", "Setembru", "Outubru", "Novembru", "Dezembru"];
+            const weekdayIndex = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(today.weekday);
+            
+            const dayName = days[weekdayIndex];
+            const dayNum = String(today.day).padStart(2, '0');
+            const monthName = months[today.month - 1];
+            const year = today.year;
+
+            const formatted = `${dayName}, ${dayNum} ${monthName} ${year}`;
+            document.getElementById('current-date-display').innerText = formatted;
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+        }
+
+        function updateCurrentTime() {
+            const time = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Asia/Dili',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }).format(new Date());
+            document.getElementById('current-time-display').innerText = time;
+        }
+
+        // Render Katalog Produk
+        function renderProducts(filtered = null) {
+            const list = [...(filtered || products)].sort((a, b) => a.naran.localeCompare(b.naran));
+            const grid = document.getElementById('products-grid');
+            grid.innerHTML = '';
+
+            document.getElementById('product-count').innerText = `${list.length} Items`;
+
+            if (list.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-sm">Produtu la hetan.</div>`;
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'w-full min-w-[42rem] text-sm text-left text-slate-600';
+            table.innerHTML = `
+                <thead class="sticky top-0 bg-slate-100 text-slate-700 text-xs uppercase z-10">
+                    <tr>
+                        <th class="p-3">Produtu</th>
+                        <th class="p-3">Folin</th>
+                        <th class="p-3">Quantidade</th>
+                        <th class="p-3 text-center">Aksaun</th>
+                    </tr>
+                </thead>
+            `;
+            const tbody = document.createElement('tbody');
+            tbody.className = 'divide-y divide-slate-200';
+
+            list.forEach(p => {
+                const packageSize = getPackageSize(p);
+                const isCigaretteBatang = p.unit === "batang" || p.naran.toLowerCase().includes("rahun") || p.naran.toLowerCase().includes("batang");
+                let quickButtons = '';
+                if (isCigaretteBatang) {
+                    quickButtons = `
+                        <div class="mt-2 flex gap-1 flex-wrap" onclick="event.stopPropagation()">
+                            <button onclick="addToCart(${p.id}, 2)" class="text-[10px] bg-slate-200 hover:bg-teal-600 hover:text-white px-1.5 py-0.5 rounded font-medium transition">+2 batang ($0.25)</button>
+                            <button onclick="addToCart(${p.id}, 4)" class="text-[10px] bg-slate-200 hover:bg-teal-600 hover:text-white px-1.5 py-0.5 rounded font-medium transition">+4 batang ($0.50)</button>
+                            <button onclick="addToCart(${p.id}, 7)" class="text-[10px] bg-slate-200 hover:bg-teal-600 hover:text-white px-1.5 py-0.5 rounded font-medium transition">+7 batang ($0.75)</button>
+                            <button onclick="addToCart(${p.id}, 8)" class="text-[10px] bg-teal-100 text-teal-800 hover:bg-teal-700 hover:text-white px-1.5 py-0.5 rounded font-bold transition">+8 batang ($1.00)</button>
+                        </div>
+                    `;
+                }
+
+                const row = document.createElement('tr');
+                row.className = 'bg-white hover:bg-teal-50 cursor-pointer';
+                row.onclick = () => addToCart(p.id, 1);
+                row.innerHTML = `
+                    <td class="p-3">
+                        <div class="font-bold text-slate-800">${p.naran}</div>
+                    </td>
+                    <td class="p-3 font-semibold text-slate-700">$${formatPrice(p.folin)}</td>
+                    <td class="p-3 text-xs text-teal-700 font-medium">${packageSize ? `${packageSize} ${displayUnitLabel(p.unit)} = $${formatPrice(getPackageTotal(p))}` : '-'}</td>
+                    <td class="p-3 text-center">
+                        <div class="flex flex-col items-center gap-1" onclick="event.stopPropagation()">
+                            ${quickButtons}
+                            <div class="flex items-center gap-2 text-xs">
+                                <button onclick="openEditModal(${p.id})" title="Hadia" aria-label="Hadia produtu" class="product-action-button product-action-edit"><i class="fa-solid fa-pen"></i><span>Hadia</span></button>
+                                <button onclick="deleteProduct(${p.id})" title="Hamoos" aria-label="Hamoos produtu" class="product-action-button product-action-delete"><i class="fa-solid fa-trash-can"></i><span>Hamoos</span></button>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            table.appendChild(tbody);
+            grid.appendChild(table);
+        }
+
+        function filterProducts() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const filtered = products.filter(p => p.naran.toLowerCase().includes(query));
+            renderProducts(filtered);
+
+            clearTimeout(window.searchResetTimer);
+            if (query) {
+                window.searchResetTimer = setTimeout(() => {
+                    const searchInput = document.getElementById('search-input');
+                    searchInput.value = '';
+                    renderProducts();
+                }, 5000);
+            }
+        }
+
+        function handleAddProduct(e) {
+            if (!requireAdmin()) return;
+            e.preventDefault();
+            const naran = document.getElementById('input-naran').value.trim();
+            const folin = parseFloat(document.getElementById('input-folin').value);
+            const unit = document.getElementById('input-unit').value || "unit";
+            const isiInput = document.getElementById('input-isi').value;
+            const isi = isiInput || (unit.toLowerCase().includes("plastik") ? "4" : "");
+
+            if (!naran || isNaN(folin)) {
+                return showValidationMessage("Prenche lai koluna nee.");
+            }
+
+            products.push({ id: Date.now(), naran, folin, isi, unit, modifiedDate: new Date().toISOString().split('T')[0] });
+            saveProducts();
+            renderProducts();
+            document.getElementById('add-product-form').reset();
+            showToast(`Produtu "${naran}" aumenta tiha ona!`);
+        }
+
+        function deleteProduct(id) {
+            if (!requireAdmin()) return;
+            const prod = products.find(p => p.id === id);
+            if (!prod) return;
+            products = products.filter(p => p.id !== id);
+            cart = cart.filter(item => item.id !== id);
+            saveProducts();
+            renderProducts();
+            renderCart();
+            showToast(`Produtu "${prod.naran}" hamoos tiha ona.`);
+        }
+
+        function openEditModal(id) {
+            if (!requireAdmin()) return;
+            const prod = products.find(p => p.id === id);
+            if (!prod) return;
+            document.getElementById('edit-id').value = prod.id;
+            document.getElementById('edit-naran').value = prod.naran;
+            document.getElementById('edit-barcode').value = prod.barcode || '';
+            document.getElementById('edit-folin').value = prod.folin;
+            document.getElementById('edit-unit').value = prod.unit || '';
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        function saveEditProduct(e) {
+            if (!requireAdmin()) return;
+            e.preventDefault();
+            const id = parseInt(document.getElementById('edit-id').value);
+            const naran = document.getElementById('edit-naran').value.trim();
+            const barcode = document.getElementById('edit-barcode').value.trim();
+            const folin = parseFloat(document.getElementById('edit-folin').value);
+            const unit = document.getElementById('edit-unit').value.trim();
+
+            const prod = products.find(p => p.id === id);
+            if (prod) {
+                const duplicate = barcode && products.some(p => p.id !== id && String(p.barcode || '').trim() === barcode);
+                if (duplicate) return showValidationMessage('Barcode nee rejistu ona ba produtu seluk.');
+                prod.naran = naran;
+                prod.barcode = barcode;
+                prod.folin = folin;
+                prod.unit = unit;
+                prod.modifiedDate = new Date().toISOString().split('T')[0];
+                saveProducts();
+                renderProducts();
+                renderCart();
+                closeEditModal();
+                showToast("Mudansa rai tiha ona!");
+            }
+        }
+
+        // Keranjang Logic (Preserves Exact Unit display: e.g. "$0.125 × 8 batang" -> "$1.00")
+        function addToCart(productId, count = 1) {
+            if (!requireAdmin()) return;
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const existing = cart.find(item => item.id === productId);
+            if (existing) {
+                existing.qty += count;
+            } else {
+                cart.push({ ...product, qty: count });
+            }
+
+            saveCart();
+            renderCart();
+        }
+
+        function updateCartQty(productId, delta) {
+            if (!requireAdmin()) return;
+            const item = cart.find(i => i.id === productId);
+            if (!item) return;
+
+            item.qty += delta;
+            if (item.qty <= 0) {
+                cart = cart.filter(i => i.id !== productId);
+            }
+            saveCart();
+            renderCart();
+        }
+
+        function clearCart() {
+            if (!requireAdmin()) return;
+            cart = [];
+            saveCart();
+            renderCart();
+        }
+
+        function renderCart() {
+            const cartContainer = document.getElementById('cart-items');
+            const subtotalEl = document.getElementById('cart-subtotal');
+            const totalEl = document.getElementById('cart-total');
+            const payBtn = document.getElementById('btn-pay');
+            const debeBtn = document.getElementById('btn-debe');
+
+            if (cart.length === 0) {
+                cartContainer.innerHTML = `
+                    <div id="empty-cart-msg" class="text-center py-10 text-slate-400">
+                        <i class="fa-solid fa-basket-shopping text-4xl mb-2 block opacity-40"></i>
+                        <p class="text-sm">Klik produtu iha karuk atu aumenta ba lista sosa sasan</p>
+                    </div>`;
+                subtotalEl.innerText = "$0.00";
+                totalEl.innerText = "$0.00";
+                payBtn.disabled = true;
+                debeBtn.disabled = true;
+                updateSelectedCartButton();
+                return;
+            }
+
+            cartContainer.innerHTML = '';
+            let grandTotal = 0;
+
+            cart.forEach(item => {
+                let itemTotal = item.folin * item.qty;
+                // Penyesuaian khusus rokok eceran 7 batang = $0.75
+                if ((item.naran.toLowerCase().includes("rahun") || item.unit === "batang") && item.qty === 7) {
+                    itemTotal = 0.75;
+                }
+                grandTotal += itemTotal;
+
+                const packageSize = getPackageSize(item);
+                const displayQty = isPackagePricedProduct(item) && packageSize ? item.qty * Number(packageSize) : item.qty;
+                const unitLabel = isPlasticPackage(item) ? ' plastik' : (item.unit ? ` ${displayUnitLabel(item.unit)}` : '');
+                const priceFormatted = `$${formatPrice(item.folin)}`;
+
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm";
+                row.innerHTML = `
+                    <input type="checkbox" class="cart-item-select mr-3 h-4 w-4 accent-teal-600" data-product-id="${item.id}" onchange="updateSelectedCartButton()" aria-label="Seleciona ${item.naran}">
+                    <div class="flex-1 pr-2">
+                        <div class="font-bold text-slate-800">${item.naran}</div>
+                        <div class="text-xs text-slate-500 font-mono mt-0.5">${priceFormatted} × ${displayQty}${unitLabel}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center bg-white border border-slate-300 rounded-md shadow-sm">
+                            <button onclick="updateCartQty(${item.id}, -1)" class="px-2 py-1 text-slate-600 hover:bg-slate-100 font-bold text-xs">-</button>
+                            <span class="px-2 text-xs font-bold text-slate-800">${item.qty}</span>
+                            <button onclick="updateCartQty(${item.id}, 1)" class="px-2 py-1 text-slate-600 hover:bg-slate-100 font-bold text-xs">+</button>
+                        </div>
+                        <span class="font-bold text-slate-900 text-right w-16 text-base">$${formatPrice(itemTotal)}</span>
+                    </div>
+                `;
+                cartContainer.appendChild(row);
+            });
+
+            subtotalEl.innerText = `$${formatPrice(grandTotal)}`;
+            totalEl.innerText = `$${formatPrice(grandTotal)}`;
+            payBtn.disabled = false;
+            debeBtn.disabled = false;
+            updateSelectedCartButton();
+        }
+
+        function updateSelectedCartButton() {
+            const deleteButton = document.getElementById('delete-selected-cart');
+            if (deleteButton) {
+                deleteButton.disabled = document.querySelectorAll('.cart-item-select:checked').length === 0;
+            }
+        }
+
+        function deleteSelectedCartItems() {
+            if (!requireAdmin()) return;
+            const selectedIds = Array.from(document.querySelectorAll('.cart-item-select:checked'))
+                .map(checkbox => Number(checkbox.dataset.productId));
+            if (selectedIds.length === 0) return;
+
+            cart = cart.filter(item => !selectedIds.includes(item.id));
+            saveCart();
+            renderCart();
+        }
+
+        function processTransaction(tipe = 'dinheiro') {
+            if (!requireAdmin()) return;
+            if (cart.length === 0) return;
+
+            if (tipe === 'dinheiro') {
+                openCashPaymentModal();
+                return;
+            }
+
+            completeCashTransaction();
+        }
+
+        function getCartTotal() {
+            return cart.reduce((sum, item) => {
+                let itemTotal = item.folin * item.qty;
+                if ((item.naran.toLowerCase().includes("rahun") || item.unit === "batang") && item.qty === 7) {
+                    itemTotal = 0.75;
+                }
+                return sum + itemTotal;
+            }, 0);
+        }
+
+        function openCashPaymentModal() {
+            document.getElementById('cash-payment-total').innerText = `$${formatPrice(getCartTotal())}`;
+            document.getElementById('cash-payment-amount').value = '';
+            document.getElementById('cash-payment-status').className = 'hidden rounded-lg p-3 text-sm font-semibold';
+            document.getElementById('cash-payment-status').innerText = '';
+            document.getElementById('confirm-cash-payment').disabled = true;
+            document.getElementById('cash-payment-modal').classList.remove('hidden');
+            document.getElementById('cash-payment-amount').focus();
+        }
+
+        function closeCashPaymentModal() {
+            document.getElementById('cash-payment-modal').classList.add('hidden');
+        }
+
+        function updateCashPaymentStatus() {
+            const amount = parseFloat(document.getElementById('cash-payment-amount').value);
+            const total = getCartTotal();
+            const status = document.getElementById('cash-payment-status');
+            const confirmButton = document.getElementById('confirm-cash-payment');
+
+            if (isNaN(amount) || amount < 0) {
+                status.className = 'hidden rounded-lg p-3 text-sm font-semibold';
+                confirmButton.disabled = true;
+                return;
+            }
+
+            if (amount < total) {
+                status.className = 'rounded-lg p-3 text-sm font-semibold bg-red-50 text-red-700 border border-red-200';
+                status.innerText = `Osan la to'o. Falta: $${formatPrice(total - amount)}`;
+                confirmButton.disabled = true;
+                return;
+            }
+
+            const change = amount - total;
+            status.className = 'rounded-lg p-3 text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+            status.innerText = change > 0 ? `Fo fila osan: $${formatPrice(change)}` : 'Osan pas';
+            confirmButton.disabled = false;
+        }
+
+        function confirmCashPayment() {
+            if (!requireAdmin()) return;
+            const amount = parseFloat(document.getElementById('cash-payment-amount').value);
+            if (isNaN(amount) || amount < getCartTotal()) return;
+
+            closeCashPaymentModal();
+            completeCashTransaction();
+        }
+
+        function completeCashTransaction() {
+            if (!requireAdmin()) return;
+            const currentTotal = getCartTotal();
+
+            let itemSummary = cart.map(i => `${i.naran} x${i.qty} ${displayUnitLabel(i.unit)}`).join(', ');
+
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            totalTransasaun += 1;
+            totalVendas += currentTotal;
+
+            transactions.unshift({
+                id: Date.now(),
+                data: new Date().toISOString().split('T')[0],
+                oras: timeStr,
+                kliente: "Cash Kliente",
+                items: itemSummary,
+                total: currentTotal,
+                tipe: 'cash'
+            });
+            saveTransactions();
+
+            updateReportBanner();
+            clearCart();
+            showToast("Transasaun selu direta susesu!");
+        }
+
+        // Relatorio Modal
+        function updateReportBanner(reportMode = 'all') {
+            const transactionCount = document.getElementById('trans-count-text');
+            const salesTotal = document.getElementById('total-vendas-text');
+            const reportTransactionCount = document.getElementById('report-modal-trans-count');
+            const reportSalesTotal = document.getElementById('report-modal-total-vendas');
+            if (transactionCount) transactionCount.innerText = totalTransasaun;
+            if (salesTotal) salesTotal.innerText = totalVendas.toFixed(2);
+            const reportTransactions = reportMode === 'cash'
+                ? transactions.filter(transaction => (transaction.tipe || 'cash') === 'cash')
+                : reportMode === 'debe'
+                    ? transactions.filter(transaction => transaction.tipe === 'debe')
+                    : transactions;
+            const reportTotal = reportTransactions.reduce((sum, transaction) => sum + Number(transaction.total || 0), 0);
+            if (reportTransactionCount) reportTransactionCount.innerText = reportTransactions.length;
+            if (reportSalesTotal) reportSalesTotal.innerText = `$${reportTotal.toFixed(2)}`;
+
+            const unpaidTotal = reportMode === 'cash'
+                ? 0
+                : debeList.reduce((sum, d) => sum + (d.total - d.paid), 0);
+            const reportDebeTotal = document.getElementById('report-modal-total-debe');
+            if (reportDebeTotal) reportDebeTotal.innerText = `$${Math.max(0, unpaidTotal).toFixed(2)}`;
+        }
+
+        function openReportModal() {
+            updateReportBanner('all');
+            const tbody = document.getElementById('report-trans-list');
+            tbody.innerHTML = '';
+
+            [['Cash', 'cash'], ['Debe', 'debe']].forEach(([groupLabel, groupType]) => {
+                const groupTransactions = transactions.filter(transaction => (transaction.tipe || 'cash') === groupType);
+
+                const groupRow = document.createElement('tr');
+                groupRow.innerHTML = `<td colspan="5" class="p-2.5 bg-teal-50 text-teal-800 font-bold">${groupLabel}</td>`;
+                tbody.appendChild(groupRow);
+
+                if (groupTransactions.length === 0) {
+                    const emptyRow = document.createElement('tr');
+                    emptyRow.innerHTML = '<td colspan="5" class="p-2.5 text-center text-slate-400">Seidauk iha transasaun</td>';
+                    tbody.appendChild(emptyRow);
+                    return;
+                }
+
+                groupTransactions.forEach(t => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="p-2.5 font-mono text-slate-500">${t.data}</td>
+                        <td class="p-2.5 font-mono text-slate-500">${t.oras}</td>
+                        <td class="p-2.5 font-semibold text-slate-800">${t.kliente}</td>
+                        <td class="p-2.5 text-slate-600 whitespace-normal break-words">${t.items.replace(/\bunit\b/gi, 'Qtd').split(', ').join('<br>')}</td>
+                        <td class="p-2.5 text-right font-bold text-slate-800">$${t.total.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+
+            updateProductSalesChart(transactions);
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function updateProductSalesChart(sourceTransactions = transactions) {
+            if (typeof Chart === 'undefined') return;
+
+            const sortedProducts = getProductSalesTotals(sourceTransactions);
+            const chartElement = document.getElementById('product-sales-chart');
+            if (window.productSalesChart) window.productSalesChart.destroy();
+
+            window.productSalesChart = new Chart(chartElement, {
+                type: 'bar',
+                data: {
+                    labels: sortedProducts.map(([name]) => name),
+                    datasets: [{
+                        label: 'Total Qtdade',
+                        data: sortedProducts.map(([, quantity]) => quantity),
+                        backgroundColor: '#0f766e',
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
+
+        function getProductSalesTotals(sourceTransactions = transactions) {
+            const productTotals = {};
+            sourceTransactions.forEach(transaction => {
+                transaction.items.split(',').forEach(itemText => {
+                    const match = itemText.trim().match(/^(.*?)\s+x(\d+)/);
+                    if (!match) return;
+
+                    const productName = match[1].trim();
+                    productTotals[productName] = (productTotals[productName] || 0) + Number(match[2]);
+                });
+            });
+
+            return Object.entries(productTotals).sort((a, b) => b[1] - a[1]);
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+
+        // DEBE SYSTEM WITH DYNAMIC ITEM ROW & AUTO PRICE
+        function openDebeModal() {
+            renderDebeCards();
+            document.getElementById('debe-modal').classList.remove('hidden');
+        }
+
+        function closeDebeModal() {
+            document.getElementById('debe-modal').classList.add('hidden');
+        }
+
+        function addDebeItemRow(prodId = '', qty = 1) {
+            const container = document.getElementById('debe-items-container');
+            const rowId = Date.now() + Math.random().toString(36).substring(2, 5);
+            
+            let optionsHtml = `<option value="">-- Hili Produtu --</option>`;
+            products.forEach(p => {
+                optionsHtml += `<option value="${p.id}" ${p.id == prodId ? 'selected' : ''}>${p.naran} ($${formatPrice(p.folin)} / ${displayUnitLabel(p.unit || 'unit')})</option>`;
+            });
+
+            const row = document.createElement('div');
+            row.className = "flex gap-2 items-center debe-item-row";
+            row.id = `row-${rowId}`;
+            row.innerHTML = `
+                <select onchange="calculateDebeFormTotal()" class="product-select flex-1 px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    ${optionsHtml}
+                </select>
+                <input type="number" min="1" value="${qty}" onchange="calculateDebeFormTotal()" onkeyup="calculateDebeFormTotal()" 
+                    placeholder="Qtd" class="qty-input w-20 px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                <span class="subtotal-text font-bold text-xs w-16 text-right text-amber-900">$0.00</span>
+                <button onclick="document.getElementById('row-${rowId}').remove(); calculateDebeFormTotal();" class="text-slate-400 hover:text-red-600 text-xs px-1">&times;</button>
+            `;
+            container.appendChild(row);
+            calculateDebeFormTotal();
+        }
+
+        function calculateDebeFormTotal() {
+            let total = 0;
+            document.querySelectorAll('.debe-item-row').forEach(row => {
+                const prodId = row.querySelector('.product-select').value;
+                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+                const prod = products.find(p => p.id == prodId);
+                
+                let sub = 0;
+                if (prod) {
+                    sub = getPackageTotal(prod) * qty;
+                    if ((prod.naran.toLowerCase().includes("rahun") || prod.unit === "batang") && qty === 7) {
+                        sub = 0.75;
+                    }
+                }
+                row.querySelector('.subtotal-text').innerText = `$${formatPrice(sub)}`;
+                total += sub;
+            });
+            document.getElementById('debe-form-total').innerText = `$${formatPrice(total)}`;
+            return total;
+        }
+
+        function saveNewDebe() {
+            if (!requireAdmin()) return;
+            const customer = document.getElementById('debe-form-customer').value.trim();
+            const date = document.getElementById('debe-form-date').value;
+            const total = calculateDebeFormTotal();
+
+            if (!customer) return alert("Favor preenchi Naran Debe!");
+            if (total <= 0) return alert("Favor hili pelo menus produtu ida!");
+
+            let items = [];
+            document.querySelectorAll('.debe-item-row').forEach(row => {
+                const prodId = row.querySelector('.product-select').value;
+                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+                const prod = products.find(p => p.id == prodId);
+                if (prod && qty > 0) {
+                    items.push({ name: prod.naran, price: prod.folin, qty: qty, unit: prod.unit || '', subtotal: getPackageTotal(prod) * qty });
+                }
+            });
+
+            debeList.unshift({
+                id: Date.now(),
+                customer: customer,
+                date: date,
+                items: items,
+                total: total,
+                paid: 0.00,
+                history: []
+            });
+            saveDebeList();
+
+            // Reset Form
+            document.getElementById('debe-form-customer').value = '';
+            document.getElementById('debe-items-container').innerHTML = '';
+            addDebeItemRow();
+            renderDebeCards();
+            updateDebeHeader();
+            showToast(`Regista Debe Foun "${customer}"!`);
+        }
+
+        function openFamilyUseModal() {
+            renderFamilyUseList();
+            document.getElementById('family-use-modal').classList.remove('hidden');
+        }
+
+        function closeFamilyUseModal() {
+            document.getElementById('family-use-modal').classList.add('hidden');
+        }
+
+        function addFamilyUseItemRow(prodId = '', qty = 1) {
+            const container = document.getElementById('family-use-items');
+            const rowId = Date.now() + Math.random().toString(36).substring(2, 5);
+            const options = products.map(product =>
+                `<option value="${product.id}" ${product.id == prodId ? 'selected' : ''}>${product.naran}</option>`
+            ).join('');
+            const row = document.createElement('div');
+            row.className = 'flex gap-2 items-center family-use-item-row';
+            row.id = `family-use-row-${rowId}`;
+            row.innerHTML = `
+                <select class="family-use-product flex-1 px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <option value="">-- Hili Produtu --</option>${options}
+                </select>
+                <input type="number" min="1" value="${qty}" class="family-use-qty w-20 px-3 py-1.5 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Qtd">
+                <button onclick="document.getElementById('family-use-row-${rowId}').remove()" class="text-slate-400 hover:text-red-600 text-xs px-1" title="Hapus">&times;</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function saveFamilyUse() {
+            if (!requireAdmin()) return;
+            const person = document.getElementById('family-use-person').value.trim();
+            const date = document.getElementById('family-use-date').value;
+            const note = document.getElementById('family-use-note').value.trim();
+            const items = [];
+
+            document.querySelectorAll('.family-use-item-row').forEach(row => {
+                const product = products.find(p => p.id == row.querySelector('.family-use-product').value);
+                const qty = parseFloat(row.querySelector('.family-use-qty').value);
+                if (product && qty > 0) {
+                    items.push({
+                        productId: product.id,
+                        name: product.naran,
+                        qty,
+                        unit: product.unit || '',
+                        estimatedValue: getPackageTotal(product) * qty
+                    });
+                }
+            });
+
+            if (!person) return showValidationMessage('Prenche lai naran família.');
+            if (!date) return showValidationMessage('Hili data.');
+            if (items.length === 0) return showValidationMessage('Hili pelo menus produtu ida.');
+
+            const familyUseDestination = document.getElementById('family-use-destination').value;
+            if (familyUseDestination === 'debe') {
+                const total = items.reduce((sum, item) => sum + (Number(item.estimatedValue) || 0), 0);
+                debeList.unshift({
+                    id: Date.now(),
+                    customer: `Família: ${person}`,
+                    date,
+                    items: items.map(item => ({
+                        name: item.name,
+                        price: Number(item.estimatedValue) / item.qty,
+                        qty: item.qty,
+                        unit: item.unit,
+                        subtotal: Number(item.estimatedValue) || 0
+                    })),
+                    total,
+                    paid: 0,
+                    history: []
+                });
+                saveDebeList();
+                renderDebeCards();
+                updateDebeHeader();
+            }
+
+            familyUses.unshift({
+                id: Date.now(),
+                person,
+                date,
+                note,
+                items,
+                createdAt: new Date().toISOString()
+            });
+            saveFamilyUses();
+            document.getElementById('family-use-person').value = '';
+            document.getElementById('family-use-note').value = '';
+            document.getElementById('family-use-destination').value = 'family';
+            document.getElementById('family-use-items').innerHTML = '';
+            addFamilyUseItemRow();
+            renderFamilyUseList();
+            showToast(familyUseDestination === 'debe'
+                ? `Registu família ba "${person}" tama iha Debe tiha ona!`
+                : `Registu sasan família ba "${person}" rai tiha ona!`);
+        }
+
+        function renderFamilyUseList() {
+            const container = document.getElementById('family-use-list');
+            if (!container) return;
+            container.innerHTML = '';
+            const totalEstimatedValue = familyUses.reduce((sum, entry) =>
+                sum + entry.items.reduce((itemSum, item) => itemSum + (Number(item.estimatedValue) || 0), 0), 0);
+            document.getElementById('family-use-summary').innerText =
+                `${familyUses.length} registu | Valór estimadu: $${formatPrice(totalEstimatedValue)}`;
+
+            if (familyUses.length === 0) {
+                container.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">Seidauk iha registu.</p>';
+                return;
+            }
+
+            familyUses.forEach(entry => {
+                const items = entry.items.map(item =>
+                    `${item.name} x${item.qty} ${displayUnitLabel(item.unit)}`).join(', ');
+                const estimatedValue = entry.items.reduce((sum, item) => sum + (Number(item.estimatedValue) || 0), 0);
+                const card = document.createElement('div');
+                card.className = 'border rounded-xl p-4 bg-white shadow-sm';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start gap-3">
+                        <div>
+                            <span class="font-bold text-slate-800">${entry.person}</span>
+                            <span class="text-xs text-slate-400 block mt-0.5">${entry.date}</span>
+                        </div>
+                        <button onclick="deleteFamilyUse(${entry.id})" class="text-slate-400 hover:text-red-600 p-1" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200 mt-3">${items}</div>
+                    <div class="flex justify-between text-xs text-slate-500 mt-2">
+                        <span>${entry.note || 'La iha nota'}</span>
+                        <strong class="text-blue-700">Valór estimadu: $${formatPrice(estimatedValue)}</strong>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function deleteFamilyUse(id) {
+            if (!requireAdmin()) return;
+            const entry = familyUses.find(item => item.id === id);
+            if (!entry || !confirm(`Hapus registu família ba "${entry.person}"?`)) return;
+            familyUses = familyUses.filter(item => item.id !== id);
+            saveFamilyUses();
+            renderFamilyUseList();
+            showToast('Registu família hapus tiha ona.');
+        }
+
+        function processDebeFromCart() {
+            if (!requireAdmin()) return;
+            if (cart.length === 0) return;
+            openDebeModal();
+            document.getElementById('debe-items-container').innerHTML = '';
+            cart.forEach(item => {
+                addDebeItemRow(item.id, item.qty);
+            });
+            clearCart();
+        }
+
+        function renderDebeCards() {
+            const container = document.getElementById('debe-cards-list');
+            container.innerHTML = '';
+
+            if (debeList.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-xs text-center py-6">Seidauk iha rejistu debe.</p>`;
+                return;
+            }
+
+            let totalUnpaidSum = 0;
+
+            debeList.forEach(d => {
+                const restu = d.total - d.paid;
+                if (restu > 0) totalUnpaidSum += restu;
+
+                const isPaidOff = restu <= 0;
+                const percent = Math.min(100, (d.paid / d.total) * 100);
+
+                const itemDetails = d.items.map(i => `${i.name} (${i.qty} ${displayUnitLabel(i.unit)} x $${formatPrice(i.price)})`).join(', ');
+
+                const card = document.createElement('div');
+                card.className = "border rounded-xl p-4 bg-white shadow-sm space-y-3";
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="font-bold text-slate-800 text-base">${d.customer}</span>
+                            <span class="text-xs text-slate-400 block mt-0.5">Data: ${d.date}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="printDebeList(${d.id})" title="Print debe ${d.customer}" class="text-teal-700 hover:text-teal-900 p-1" aria-label="Print debe ${d.customer}">
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+                            ${isPaidOff ? `<input type="checkbox" class="paid-debe-select h-4 w-4 accent-emerald-600" data-debe-id="${d.id}" onchange="updatePaidDebeDeleteButton()" aria-label="Hapus debe ${d.customer}">` : ''}
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${isPaidOff ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                                ${isPaidOff ? 'Selu Tiha Ona' : 'Seidauk Selu'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                        <strong>Sasan:</strong> ${itemDetails}
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs font-semibold">
+                            <span class="text-slate-600">Total: $${formatPrice(d.total)}</span>
+                            <span class="text-emerald-600">Selu tiha: $${formatPrice(d.paid)}</span>
+                            ${d.paid > 0 && !isPaidOff ? `<span class="text-red-600 font-bold">Sei falta: $${formatPrice(Math.max(0, restu))}</span>` : ''}
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden border">
+                            <div class="bg-emerald-500 h-2 transition-all duration-300" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+
+                    ${!isPaidOff ? `
+                        <div class="pt-1 flex gap-2">
+                            <button onclick="openInstallmentModal(${d.id})" title="Cicil / Lunas" aria-label="Cicil / Lunas" class="flex-1 bg-teal-700 hover:bg-teal-800 text-white text-xs py-2 rounded-lg font-bold transition flex justify-center items-center gap-1">
+                                Cicil / Lunas
+                            </button>
+                            <button onclick="markFullPaid(${d.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-lg font-bold transition">
+                                Selu Hotu
+                            </button>
+                        </div>
+                    ` : ''}
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('debe-modal-unpaid-sum').innerText = `$${formatPrice(totalUnpaidSum)}`;
+            updatePaidDebeDeleteButton();
+        }
+
+        function updatePaidDebeDeleteButton() {
+            const deleteButton = document.getElementById('delete-selected-debe');
+            if (deleteButton) {
+                deleteButton.disabled = document.querySelectorAll('.paid-debe-select:checked').length === 0;
+            }
+        }
+
+        function deleteSelectedPaidDebe() {
+            if (!requireAdmin()) return;
+            const selectedIds = Array.from(document.querySelectorAll('.paid-debe-select:checked'))
+                .map(checkbox => Number(checkbox.dataset.debeId));
+            const paidDebe = debeList.filter(d => selectedIds.includes(d.id) && d.total - d.paid <= 0);
+            if (paidDebe.length === 0) return;
+
+            paidDebe.forEach(d => {
+                archiveDebeToReport(d);
+            });
+
+            debeList = debeList.filter(d => !selectedIds.includes(d.id));
+            saveDebeList();
+            renderDebeCards();
+            updateDebeHeader();
+            updateReportBanner();
+            showToast('Debe lunas rai iha relatório no hapus tiha ona!');
+        }
+
+        function archiveDebeToReport(debe) {
+            if (debe.reportArchived) return;
+
+            const now = new Date();
+            transactions.unshift({
+                id: Date.now() + debe.id,
+                    data: new Date().toISOString().split('T')[0],
+                oras: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+                kliente: debe.customer,
+                    items: debe.items.map(item => `${item.name} x${item.qty} ${displayUnitLabel(item.unit)}`).join(', '),
+                    total: debe.total,
+                    tipe: 'debe'
+            });
+            debe.reportArchived = true;
+            totalTransasaun += 1;
+            totalVendas += debe.total;
+            saveTransactions();
+        }
+
+        // Installment Modal Operations
+        function openInstallmentModal(debeId) {
+            activeInstallmentDebeId = debeId;
+            const d = debeList.find(x => x.id === debeId);
+            const restu = d.total - d.paid;
+
+            document.getElementById('installment-info').innerHTML = `
+                <div><strong>Kliente:</strong> ${d.customer}</div>
+                <div><strong>Total Debe:</strong> $${d.total.toFixed(2)}</div>
+            `;
+            document.getElementById('installment-amount').value = '';
+            document.getElementById('installment-note').value = '';
+            document.getElementById('installment-modal').classList.remove('hidden');
+            updateInstallmentPreview();
+        }
+
+        function closeInstallmentModal() {
+            document.getElementById('installment-modal').classList.add('hidden');
+        }
+
+        function updateInstallmentPreview() {
+            const d = debeList.find(x => x.id === activeInstallmentDebeId);
+            const preview = document.getElementById('installment-preview');
+            const submitButton = document.getElementById('submit-installment');
+            if (!d || !preview || !submitButton) return;
+
+            const restu = Math.max(0, d.total - d.paid);
+            const amount = parseFloat(document.getElementById('installment-amount').value);
+
+            if (!amount || amount <= 0) {
+                preview.className = 'mt-2 rounded-lg p-2.5 text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200';
+                preview.innerText = '';
+                submitButton.disabled = true;
+                return;
+            }
+
+            if (amount > restu) {
+                preview.className = 'mt-2 rounded-lg p-2.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+                preview.innerText = `Debe lunas. Fo fila osan: $${formatPrice(amount - restu)}`;
+                submitButton.disabled = false;
+                return;
+            }
+
+            preview.className = 'mt-2 rounded-lg p-2.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+            preview.innerText = restu - amount === 0
+                ? 'Debe lunas'
+                : `Depois pagamentu tuir mai: $${formatPrice(restu - amount)}`;
+            submitButton.disabled = false;
+        }
+
+        function submitInstallment() {
+            if (!requireAdmin()) return;
+            const amount = parseFloat(document.getElementById('installment-amount').value);
+            const note = document.getElementById('installment-note').value;
+            if (!amount || amount <= 0) return alert("Valor Pagamentu lalos!");
+
+            const d = debeList.find(x => x.id === activeInstallmentDebeId);
+            const restuBeforePayment = d.total - d.paid;
+            const appliedAmount = Math.min(amount, restuBeforePayment);
+            const change = Math.max(0, amount - restuBeforePayment);
+            d.paid += appliedAmount;
+            d.history.push({ date: new Date().toLocaleDateString(), amount, appliedAmount, change, note });
+            const restuAfterPayment = Math.max(0, d.total - d.paid);
+            if (restuAfterPayment === 0) {
+                archiveDebeToReport(d);
+            }
+            saveDebeList();
+
+            closeInstallmentModal();
+            renderDebeCards();
+            updateDebeHeader();
+            showToast(change > 0
+                ? `Debe lunas. Fo fila osan: $${formatPrice(change)}`
+                : restuAfterPayment === 0
+                    ? 'Debe lunas.'
+                    : `Pagamentu $${amount.toFixed(2)} simu tiha ona. Sei falta: $${formatPrice(restuAfterPayment)}`);
+        }
+
+        function markFullPaid(debeId) {
+            if (!requireAdmin()) return;
+            const d = debeList.find(x => x.id === debeId);
+            d.paid = d.total;
+            archiveDebeToReport(d);
+            saveDebeList();
+            renderDebeCards();
+            updateDebeHeader();
+            showToast(`Debe ba "${d.customer}" marque nudar Selu Tiha Ona!`);
+        }
+
+        function updateDebeHeader() {
+            const totalDebe = debeList.reduce((s, d) => s + (d.total - d.paid), 0);
+            const debeHeader = document.getElementById('total-debe-text');
+            if (debeHeader) debeHeader.innerText = `$${Math.max(0, totalDebe).toFixed(2)}`;
+        }
+
+        function printDebeList(debeId) {
+            const debe = debeList.find(item => item.id === debeId);
+            if (!debe) return;
+            const remaining = Math.max(0, debe.total - debe.paid);
+            const printWindow = window.open('', '_blank', 'width=800,height=700');
+            if (!printWindow) {
+                return showValidationMessage('Browser bloka janela print. Permite popup lai.');
+            }
+
+            const items = debe.items.map(item => {
+                const lineTotal = Number(item.price || 0) * Number(item.qty || 0);
+                return `${escHtml(item.name)} x${item.qty} ${escHtml(displayUnitLabel(item.unit))} · $${formatPrice(item.price)} = $${formatPrice(lineTotal)}`;
+            }).join('<br>');
+            const paymentHistory = Array.isArray(debe.history) && debe.history.length > 0
+                ? debe.history.map((payment, index) => {
+                    const received = Number(payment.amount) || 0;
+                    const applied = payment.appliedAmount != null ? Number(payment.appliedAmount) : received;
+                    const change = Number(payment.change) || 0;
+                    return `<tr>
+                        <td>${index + 1}</td>
+                        <td>${escHtml(payment.at ? formatDateTimeTL(payment.at) : (payment.date || '-'))}</td>
+                        <td>$${formatPrice(applied)}</td>
+                        <td>$${formatPrice(received)}</td>
+                        <td>${change > 0 ? `$${formatPrice(change)}` : ''}</td>
+                        <td>${escHtml(payment.note || '-')}</td>
+                    </tr>`;
+                }).join('')
+                : `<tr><td colspan="6" class="empty">Seidauk iha istória pagamentu.</td></tr>`;
+            const rows = `<tr>
+                <td>${escHtml(debe.customer)}</td>
+                <td>${escHtml(debe.date || '-')}</td>
+                <td>${items}</td>
+                <td>$${formatPrice(debe.total)}</td>
+            </tr>`;
+
+            printWindow.document.write(`<!doctype html><html><head><title>Lista Debe - Keos</title>
+                <style>
+                    body { font-family: Arial, sans-serif; color: #0f172a; padding: 24px; }
+                    h1 { margin: 0 0 4px; font-size: 22px; }
+                    .date { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+                    th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; vertical-align: middle; }
+                    th { background: #e2e8f0; }
+                    .paid { color: #047857; font-weight: bold; text-align: right; }
+                    .remaining { color: #b91c1c; font-weight: bold; text-align: right; }
+                    .items-table th:nth-child(1), .items-table td:nth-child(1) { width: 15%; }
+                    .items-table th:nth-child(2), .items-table td:nth-child(2) { width: 18%; }
+                    .items-table th:nth-child(3), .items-table td:nth-child(3) { width: 52%; }
+                    .items-table th:nth-child(4), .items-table td:nth-child(4) { width: 15%; text-align: right; }
+                    .payment-table th:nth-child(1), .payment-table td:nth-child(1) { width: 8%; }
+                    .payment-table th:nth-child(2), .payment-table td:nth-child(2) { width: 25%; }
+                    .payment-table th:nth-child(3), .payment-table td:nth-child(3) { width: 14%; }
+                    .payment-table th:nth-child(4), .payment-table td:nth-child(4) { width: 17%; }
+                    .payment-table th:nth-child(5), .payment-table td:nth-child(5) { width: 14%; }
+                    .payment-table th:nth-child(6), .payment-table td:nth-child(6) { width: 22%; }
+                    .payment-table th:nth-child(3), .payment-table td:nth-child(3),
+                    .payment-table th:nth-child(4), .payment-table td:nth-child(4),
+                    .payment-table th:nth-child(5), .payment-table td:nth-child(5) { text-align: left; }
+                    .payment-table th:nth-child(1), .payment-table td:nth-child(1) { text-align: center; }
+                    .payment-table th:nth-child(2), .payment-table td:nth-child(2) { white-space: nowrap; }
+                    .payment-table th:nth-child(6), .payment-table td:nth-child(6) { text-align: left; }
+                    .history-title { margin: 22px 0 8px; font-size: 15px; }
+                    .empty { text-align: center; color: #64748b; padding: 20px; }
+                    .total { margin-top: 16px; text-align: right; font-size: 16px; font-weight: bold; color: #b91c1c; }
+                    .paid-total { color: #047857; }
+                    @media print { body { padding: 0; } }
+                </style></head><body>
+                <h1>Keos - Debe: ${escHtml(debe.customer)}</h1>
+                <table class="items-table"><thead><tr><th>Kliente</th><th>Data</th><th>Sasan</th><th>Total</th></tr></thead>
+                <tbody>${rows}</tbody></table>
+                <h2 class="history-title">Pagamentu Debe</h2>
+                <table class="payment-table"><thead><tr><th>No</th><th>Data / Oras</th><th>Selu</th><th>Osan simu</th><th>Fo fila osan</th><th>Nota</th></tr></thead>
+                <tbody>${paymentHistory}</tbody></table>
+                <div class="total ${remaining === 0 ? 'paid-total' : ''}">${remaining === 0
+                    ? 'Debe Lunas'
+                    : `Selu tiha: $${formatPrice(debe.paid)} · Sei falta: $${formatPrice(remaining)}`}</div>
+                </body></html>`);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.onload = () => printWindow.print();
+        }
+
+        function printReport() {
+            const reportTransactions = currentReportMode === 'cash'
+                ? transactions.filter(transaction => (transaction.tipe || 'cash') === 'cash')
+                : currentReportMode === 'debe'
+                    ? transactions.filter(transaction => transaction.tipe === 'debe')
+                    : transactions;
+            const reportTitle = currentReportMode === 'cash'
+                ? 'Relatorio Selu Direta'
+                : currentReportMode === 'debe' ? 'Relatorio Debe' : 'Relatorio Geral';
+            const reportTotal = reportTransactions.reduce((sum, transaction) => sum + Number(transaction.total || 0), 0);
+            const rows = reportTransactions.length > 0
+                ? reportTransactions.map(transaction => `<tr>
+                    <td>${escHtml(transaction.data)}</td>
+                    <td>${escHtml(transaction.oras)}</td>
+                    <td>${escHtml(transaction.kliente)}</td>
+                    <td>${escHtml(transaction.items.replace(/\bunit\b/gi, 'Qtd')).replace(/, /g, '<br>')}</td>
+                    <td class="amount">${currentReportMode === 'debe' ? '<span class="paid-check" aria-label="Lunas">&#10003;</span>' : ''}$${formatPrice(transaction.total)}</td>
+                </tr>`).join('')
+                : '<tr><td colspan="5" class="empty">Seidauk iha transasaun</td></tr>';
+            const printWindow = window.open('', '_blank', 'width=900,height=700');
+            if (!printWindow) {
+                return showValidationMessage('Browser bloka janela print. Permite popup lai.');
+            }
+
+            printWindow.document.write(`<!doctype html><html><head><title>${escHtml(reportTitle)} - Keos</title>
+                <style>
+                    body { font-family: Arial, sans-serif; color: #0f172a; padding: 24px; }
+                    h1 { margin: 0 0 18px; font-size: 22px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                    th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
+                    th { background: #e2e8f0; }
+                    .amount { text-align: right; font-weight: bold; }
+                    .paid-check {
+                        display: inline-block;
+                        width: 14px;
+                        height: 14px;
+                        border: 1px solid #16a34a;
+                        border-radius: 3px;
+                        background: #16a34a;
+                        vertical-align: middle;
+                        margin: 0 6px 0 0;
+                        color: #fff;
+                        font-size: 11px;
+                        line-height: 12px;
+                        text-align: center;
+                        font-weight: bold;
+                    }
+                    .empty { text-align: center; color: #64748b; padding: 20px; }
+                    .total { margin-top: 16px; text-align: right; font-size: 16px; font-weight: bold; color: #047857; }
+                    .status { margin-top: 4px; text-align: right; color: #047857; font-weight: bold; }
+                    @media print { body { padding: 0; } }
+                </style></head><body>
+                <h1>Keos - ${escHtml(reportTitle)}</h1>
+                <table><thead><tr><th>Data</th><th>Oras</th><th>Kliente</th><th>Produtu</th><th>Total</th></tr></thead>
+                <tbody>${rows}</tbody></table>
+                <div class="total">Total: $${formatPrice(reportTotal)}</div>
+                ${currentReportMode === 'debe' ? '<div class="status">Lunas</div>' : ''}
+                </body></html>`);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.onload = () => printWindow.print();
+        }
+
+        function downloadReport() {
+            const format = document.getElementById('report-download-format').value;
+            const reportTransactions = currentReportMode === 'cash'
+                ? transactions.filter(transaction => (transaction.tipe || 'cash') === 'cash')
+                : currentReportMode === 'debe'
+                    ? transactions.filter(transaction => transaction.tipe === 'debe')
+                    : transactions;
+            const productSalesRows = getProductSalesTotals(reportTransactions).map(([product, quantity]) => ({
+                Produtu: product,
+                'Total Qtdade': quantity
+            }));
+            const reportRows = reportTransactions.map(t => ({
+                Data: t.data,
+                Oras: t.oras,
+                Kliente: t.kliente,
+                Tipo: t.tipe === 'debe' ? 'Debe' : 'Cash',
+                Produtu: t.items.replace(/\bunit\b/gi, 'Qtd'),
+                Total: t.total
+            }));
+
+            if (format === 'excel') {
+                const worksheet = XLSX.utils.json_to_sheet(reportRows);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatorio');
+                const chartDataSheet = XLSX.utils.json_to_sheet(productSalesRows);
+                XLSX.utils.book_append_sheet(workbook, chartDataSheet, 'Grafik Produk');
+                XLSX.writeFile(workbook, 'relatorio-vendas.xlsx');
+                showToast('Relatóriu Excel descarga tiha ona!');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const documentPdf = new jsPDF();
+            documentPdf.setFillColor(15, 118, 110);
+            documentPdf.roundedRect(14, 10, 8, 8, 2, 2, 'F');
+            documentPdf.setTextColor(15, 23, 42);
+            documentPdf.setFontSize(18);
+            documentPdf.setFont(undefined, 'bold');
+            documentPdf.text('Keos', 27, 17);
+            documentPdf.setFont(undefined, 'normal');
+            documentPdf.setFontSize(14);
+            documentPdf.text('Relatorio Vendas ohin', 14, 30);
+            documentPdf.setFontSize(10);
+            documentPdf.text('Data | Oras | Kliente | Tipo | Produtu | Total', 14, 40);
+
+            let y = 48;
+            reportTransactions.forEach(transaction => {
+                const line = `${transaction.data} | ${transaction.oras} | ${transaction.kliente} | ${transaction.tipe === 'debe' ? 'Debe' : 'Cash'} | ${transaction.items.replace(/\bunit\b/gi, 'Qtd')} | $${transaction.total.toFixed(2)}`;
+                const lines = documentPdf.splitTextToSize(line, 180);
+                documentPdf.text(lines, 14, y);
+                y += lines.length * 5 + 2;
+                if (y > 280) {
+                    documentPdf.addPage();
+                    y = 18;
+                }
+            });
+
+            if (productSalesRows.length > 0) {
+                if (y > 185) {
+                    documentPdf.addPage();
+                    y = 18;
+                }
+                documentPdf.setFontSize(12);
+                documentPdf.text('Produtu Sosa Barak', 14, y);
+
+                const maxQuantity = Math.max(...productSalesRows.map(row => row['Total Qtdade']));
+                const chartX = 18;
+                const chartY = y + 10;
+                const chartWidth = 174;
+                const chartHeight = 75;
+                const barWidth = Math.max(5, chartWidth / productSalesRows.length - 4);
+
+                documentPdf.setDrawColor(210, 220, 225);
+                documentPdf.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
+                productSalesRows.forEach((row, index) => {
+                    const barHeight = (row['Total Qtdade'] / maxQuantity) * chartHeight;
+                    const barX = chartX + index * (chartWidth / productSalesRows.length) + 2;
+                    const barY = chartY + chartHeight - barHeight;
+                    documentPdf.setFillColor(15, 118, 110);
+                    documentPdf.rect(barX, barY, barWidth, barHeight, 'F');
+                    documentPdf.setFontSize(7);
+                    documentPdf.setTextColor(30, 41, 59);
+                    documentPdf.text(String(row['Total Qtdade']), barX, barY - 2);
+                    documentPdf.text(row.Produtu.substring(0, 12), barX, chartY + chartHeight + 8);
+                });
+            }
+
+            documentPdf.save('relatorio-vendas.pdf');
+            showToast('Relatóriu PDF descarga tiha ona!');
+        }
+
+        function exportData() {
+            const backup = {
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                products,
+                debeList,
+                transactions,
+                cart,
+                familyUses
+            };
+            const backupBlob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const downloadUrl = URL.createObjectURL(backupBlob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `keos-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(downloadUrl);
+            showToast("Backup dadus descarga tiha ona!");
+        }
+
+        function importBackup(event) {
+            if (!requireAdmin()) {
+                event.target.value = '';
+                return;
+            }
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const backup = JSON.parse(reader.result);
+                    if (!Array.isArray(backup.products) || !Array.isArray(backup.debeList) || !Array.isArray(backup.transactions) || !Array.isArray(backup.cart)) {
+                        throw new Error('Invalid backup');
+                    }
+
+                    if (!confirm('Import backup sei muda dadus atuais. Kontinua?')) return;
+
+                    products = backup.products;
+                    debeList = backup.debeList;
+                    transactions = backup.transactions;
+                    cart = backup.cart;
+                    familyUses = Array.isArray(backup.familyUses) ? backup.familyUses : [];
+                    totalTransasaun = transactions.length;
+                    totalVendas = transactions.reduce((sum, transaction) => sum + transaction.total, 0);
+
+                    saveProducts();
+                    saveDebeList();
+                    saveTransactions();
+                    saveCart();
+                    saveFamilyUses();
+                    renderProducts();
+                    renderCart();
+                    renderDebeCards();
+                    renderFamilyUseList();
+                    updateReportBanner();
+                    updateDebeHeader();
+                    showToast('Backup dadus importa tiha ona!');
+                } catch (error) {
+                    alert('File backup la valid.');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+                // ===== TOMBOL HAPUS DI RELATORIU VENDAS =====
+                function handleReportMenuSelection() {
+                    const menu = document.getElementById('report-menu-select');
+                    updateReportMenuColor(menu.value);
+                    if (menu.value) {
+                        openReportModal(menu.value);
+                    }
+                }
+
+                function updateReportMenuColor(value) {
+                    const menu = document.getElementById('report-menu-select');
+                    menu.classList.remove('report-menu-default', 'report-menu-cash', 'report-menu-debe', 'report-menu-all');
+                    menu.classList.add(value === 'cash' ? 'report-menu-cash'
+                        : value === 'debe' ? 'report-menu-debe' : 'report-menu-default');
+                }
+
+                function openReportModal(mode = 'all') {
+                    currentReportMode = mode;
+                    updateReportBanner(mode);
+                    const reportTitle = document.getElementById('report-modal-title');
+                    if (reportTitle) {
+                        reportTitle.innerText = mode === 'cash'
+                            ? 'Relatorio Selu Direta'
+                            : mode === 'debe' ? 'Relatóriu Debe' : 'Relatorio Geral';
+                    }
+
+            // Tambah kolom kosong di judul tabel (sekali saja)
+            const headRow = document.querySelector('#report-trans-list').closest('table').querySelector('thead tr');
+            if (headRow && headRow.children.length === 5) {
+                headRow.insertAdjacentHTML('beforeend', '<th class="p-2.5"></th>');
+            }
+
+            const tbody = document.getElementById('report-trans-list');
+            tbody.innerHTML = '';
+
+            const reportGroups = mode === 'cash'
+                ? [['Selu', 'cash']]
+                : mode === 'debe' ? [['Debe', 'debe']] : [['Cash', 'cash'], ['Debe', 'debe']];
+            const reportTransactions = mode === 'cash'
+                ? transactions.filter(transaction => (transaction.tipe || 'cash') === 'cash')
+                : mode === 'debe'
+                    ? transactions.filter(transaction => transaction.tipe === 'debe')
+                    : transactions;
+
+            reportGroups.forEach(([groupLabel, groupType]) => {
+                const groupTransactions = transactions.filter(transaction => (transaction.tipe || 'cash') === groupType);
+
+                const groupRow = document.createElement('tr');
+                groupRow.innerHTML = `<td colspan="6" class="p-2.5 bg-teal-50 text-teal-800 font-bold">${groupLabel}</td>`;
+                tbody.appendChild(groupRow);
+
+                if (groupTransactions.length === 0) {
+                    const emptyRow = document.createElement('tr');
+                    emptyRow.innerHTML = '<td colspan="6" class="p-2.5 text-center text-slate-400">Seidauk iha transasaun</td>';
+                    tbody.appendChild(emptyRow);
+                    return;
+                }
+
+                groupTransactions.forEach(t => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="p-2.5 font-mono text-slate-500">${t.data}</td>
+                        <td class="p-2.5 font-mono text-slate-500">${t.oras}</td>
+                        <td class="p-2.5 font-semibold text-slate-800">${t.kliente}</td>
+                        <td class="p-2.5 text-slate-600 whitespace-normal break-words">${t.items.replace(/\bunit\b/gi, 'Qtd').split(', ').join('<br>')}</td>
+                        <td class="p-2.5 text-right font-bold text-slate-800">$${t.total.toFixed(2)}</td>
+                        <td class="p-2.5 text-right">
+                            <button onclick="deleteReportTransaction(${t.id})" title="Hapus" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+
+            const chartPanel = document.getElementById('report-chart-panel');
+            if (chartPanel) chartPanel.classList.toggle('hidden', mode !== 'all');
+            if (mode === 'all') {
+                updateProductSalesChart(reportTransactions);
+            } else if (window.productSalesChart) {
+                window.productSalesChart.destroy();
+                window.productSalesChart = null;
+            }
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function deleteReportTransaction(id) {
+            if (!requireAdmin()) return;
+            const t = transactions.find(x => x.id === id);
+            if (!t) return;
+            if (!confirm(`Hapus transasaun "${t.kliente}" ($${t.total.toFixed(2)})?`)) return;
+
+            transactions = transactions.filter(x => x.id !== id);
+            totalTransasaun = transactions.length;
+            totalVendas = transactions.reduce((sum, x) => sum + x.total, 0);
+            saveTransactions();
+
+            openReportModal(currentReportMode);
+            showToast('Transasaun hapus tiha ona.');
+        }
+        // ===== AKHIR TOMBOL HAPUS =====
+        // ===== TOMBOL AUMENTA DI BAWAH =====
+        (function () {
+            const form = document.getElementById('add-product-form');
+            const btn = form && form.querySelector('button[type="submit"]');
+            if (!btn) return;
+
+            btn.classList.remove('px-8', 'shrink-0');
+            btn.classList.add('w-full');
+            form.appendChild(btn);
+        })();
+        // ===== AKHIR TOMBOL AUMENTA DI BAWAH =====
+            // ===== PESAN VALIDASI PRODUK =====
+        function handleAddProduct(e) {
+            if (!requireAdmin()) return;
+            e.preventDefault();
+            const naran = document.getElementById('input-naran').value.trim();
+            const barcode = document.getElementById('input-barcode').value.trim();
+            const folin = parseFloat(document.getElementById('input-folin').value);
+            const unit = document.getElementById('input-unit').value.trim() || "unit";
+            const isiInput = document.getElementById('input-isi').value;
+            const isi = isiInput || (unit.toLowerCase().includes("plastik") ? "4" : "");
+
+            const warn = msg => (typeof showValidationMessage === 'function' ? showValidationMessage(msg) : alert(msg));
+
+            if (!naran && isNaN(folin)) return warn("Prenche lai naran produtu no folin sasan.");
+            if (!naran) return warn("Prenche lai naran produtu.");
+            if (isNaN(folin)) return warn("Prenche lai folin sasan.");
+            if (barcode && products.some(p => String(p.barcode || '').trim() === barcode)) {
+                return warn("Barcode nee rejistu ona. Labele aumenta produtu dala rua.");
+            }
+
+            products.push({ id: Date.now(), naran, folin, isi, unit, barcode, modifiedDate: new Date().toISOString().split('T')[0] });
+            saveProducts();
+            renderProducts();
+            document.getElementById('add-product-form').reset();
+            showToast(`Produtu "${naran}" aumenta tiha ona!`);
+        }
+
+        let barcodeScanner = null;
+        let barcodeCameraFacing = 'environment';
+        async function openBarcodeScanner() {
+            if (!requireAdmin()) return;
+            if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+                return showValidationMessage('Scan kamera presiza asesu HTTPS. Loke app husi link HTTPS iha telefone.');
+            }
+            if (typeof Html5Qrcode === 'undefined') {
+                return showValidationMessage('Biblioteka scanner seidauk iha. Husu internet no loke fila fali pajina.');
+            }
+
+            const modal = document.getElementById('barcode-scanner-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            barcodeCameraFacing = 'environment';
+            document.getElementById('barcode-camera-select').value = barcodeCameraFacing;
+            try {
+                await startBarcodeCamera();
+            } catch (error) {
+                closeBarcodeScanner();
+                showValidationMessage('Kamera la bele loke. Permite asesu kamera ba browser, no uza pajina HTTPS.');
+            }
+        }
+
+        async function startBarcodeCamera() {
+            if (barcodeScanner) {
+                const previousScanner = barcodeScanner;
+                barcodeScanner = null;
+                try { await previousScanner.stop(); } catch (error) {}
+                try { await previousScanner.clear(); } catch (error) {}
+            }
+
+            const scanner = new Html5Qrcode('barcode-reader');
+            barcodeScanner = scanner;
+            const formats = [
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.ITF
+            ];
+
+            try {
+                await scanner.start(
+                    { facingMode: barcodeCameraFacing },
+                    { fps: 10, qrbox: { width: 260, height: 130 }, formatsToSupport: formats },
+                    decodedText => {
+                        document.getElementById('input-barcode').value = decodedText.trim();
+                        const found = products.find(p => String(p.barcode || '').trim() === decodedText.trim());
+                        closeBarcodeScanner();
+                        if (found) {
+                            document.getElementById('input-naran').value = found.naran;
+                            document.getElementById('input-folin').value = found.folin;
+                            showToast(`Barcode ne'e ba produtu "${found.naran}" ne'ebé rejistu ona.`);
+                        } else {
+                            document.getElementById('input-naran').focus();
+                            showToast('Barcode lee tiha ona. Prenche naran no folin produtu.');
+                        }
+                    },
+                    () => {}
+                );
+            } catch (error) {
+                if (barcodeScanner === scanner) barcodeScanner = null;
+                try { await scanner.stop(); } catch (stopError) {}
+                try { await scanner.clear(); } catch (clearError) {}
+                throw error;
+            }
+        }
+
+        async function switchBarcodeCamera(facingMode) {
+            const previousFacing = barcodeCameraFacing;
+            barcodeCameraFacing = facingMode === 'user' ? 'user' : 'environment';
+            try {
+                await startBarcodeCamera();
+            } catch (error) {
+                barcodeCameraFacing = previousFacing;
+                document.getElementById('barcode-camera-select').value = previousFacing;
+                try {
+                    await startBarcodeCamera();
+                    showValidationMessage('Kamera ne\'e la disponivel. Fila uza kamera uluk.');
+                } catch (restartError) {
+                    closeBarcodeScanner();
+                    showValidationMessage('Kamera la bele loke. Permite asesu kamera ba browser no uza pajina HTTPS.');
+                }
+            }
+        }
+
+        function closeBarcodeScanner() {
+            const modal = document.getElementById('barcode-scanner-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            if (barcodeScanner) {
+                const activeScanner = barcodeScanner;
+                barcodeScanner = null;
+                activeScanner.stop().then(() => activeScanner.clear()).catch(() => {});
+            }
+        }
+        // ===== AKHIR PESAN VALIDASI PRODUK =====
+            // ===== NOTIF AESTHETIC =====
+        (function () {
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes notifFade { from { opacity: 0 } to { opacity: 1 } }
+                @keyframes notifPop { from { opacity: 0; transform: translateY(12px) scale(.95) } to { opacity: 1; transform: translateY(0) scale(1) } }
+            `;
+            document.head.appendChild(style);
+
+            let overlay = null;
+            let afterClose = null;
+
+            function onKey(e) {
+                if (e.key === 'Escape' || e.key === 'Enter') {
+                    e.preventDefault();
+                    closeNotif();
+                }
+            }
+
+            function closeNotif() {
+                if (!overlay) return;
+                overlay.remove();
+                overlay = null;
+                document.removeEventListener('keydown', onKey);
+                if (afterClose) {
+                    const run = afterClose;
+                    afterClose = null;
+                    run();
+                }
+            }
+
+            window.closeValidationMessage = closeNotif;
+
+            window.showValidationMessage = function (msg) {
+                if (overlay) overlay.remove();
+
+                overlay = document.createElement('div');
+                overlay.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm';
+                overlay.style.animation = 'notifFade .15s ease-out';
+                overlay.innerHTML = `
+                    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden text-center" style="animation: notifPop .2s ease-out">
+                        <div class="pt-7 pb-2 px-6">
+                            <div class="mx-auto mb-4 w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
+                                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl"></i>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900">Informasaun</h3>
+                            <p id="aesthetic-notif-msg" class="mt-1 text-sm text-slate-500"></p>
+                        </div>
+                        <div class="p-5 pt-4">
+                            <button id="aesthetic-notif-ok" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-sm">OK</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                overlay.querySelector('#aesthetic-notif-msg').textContent = msg;
+                overlay.querySelector('#aesthetic-notif-ok').onclick = closeNotif;
+                overlay.onclick = e => { if (e.target === overlay) closeNotif(); };
+                document.addEventListener('keydown', onKey);
+                overlay.querySelector('#aesthetic-notif-ok').focus();
+
+                // Setelah ditutup, kursor langsung ke kolom yang kosong
+                const text = String(msg).toLowerCase();
+                afterClose = () => {
+                    const target = text.includes('folin') ? 'input-folin' : (text.includes('naran') ? 'input-naran' : null);
+                    if (target) document.getElementById(target)?.focus();
+                };
+            };
+        })();
+        // ===== AKHIR NOTIF AESTHETIC =====
+            // ===== DETALLU PAGAMENTU DEBE =====
+        function formatDateTimeTL(iso) {
+            const d = new Date(iso);
+            if (isNaN(d)) return '';
+            const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+            return `${String(d.getDate()).padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function escHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function entryWhen(h) {
+            return h.at ? formatDateTimeTL(h.at) : `${escHtml(h.date || '-')} (oras la rejistu)`;
+        }
+
+        function renderDebeHistory(d, isPaidOff) {
+            const hist = Array.isArray(d.history) ? d.history : [];
+            if (hist.length === 0) {
+                return d.paid > 0
+                    ? '<div class="text-xs text-slate-400">Pagamentu seidauk iha detallu data/oras.</div>'
+                    : '';
+            }
+
+            const rows = hist.map((h, i) => {
+                const received = Number(h.amount) || 0;
+                const applied = h.appliedAmount != null ? Number(h.appliedAmount) : received;
+                const change = Number(h.change) || 0;
+                const extra = (received !== applied || change > 0)
+                    ? `<div class="text-[10px] text-slate-400">Osan simu $${formatPrice(received)}${change > 0 ? ` · Troka $${formatPrice(change)}` : ''}</div>`
+                    : '';
+                const note = h.note ? `<div class="text-[10px] text-slate-400">${escHtml(h.note)}</div>` : '';
+                return `
+                    <div class="flex justify-between gap-3 py-1.5 border-b border-slate-100 last:border-0">
+                        <div>
+                            <div class="text-xs text-slate-600 font-medium">#${i + 1} · ${entryWhen(h)}</div>
+                            ${note}
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-emerald-700">+ $${formatPrice(applied)}</div>
+                            ${extra}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            let paidOffBanner = '';
+            if (isPaidOff) {
+                const last = hist[hist.length - 1];
+                const received = Number(last.amount) || 0;
+                const change = Number(last.change) || 0;
+                paidOffBanner = `
+                    <div class="mb-2 text-xs bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2">
+                        <i class="fa-solid fa-circle-check mr-1"></i>
+                        <strong>Lunas iha ${entryWhen(last)}</strong>
+                        <div class="mt-0.5">Pagamentu ikus: osan simu $${formatPrice(received)}${change > 0 ? ` · Troka $${formatPrice(change)}` : ''}</div>
+                    </div>`;
+            }
+
+            return `
+                <div class="border border-slate-200 rounded-lg p-3 bg-white">
+                    <div class="text-xs font-bold text-slate-700 mb-1.5">Istória Pagamentu</div>
+                    ${paidOffBanner}
+                    <div class="max-h-40 overflow-y-auto">${rows}</div>
+                </div>`;
+        }
+
+        function renderDebeCards() {
+            const container = document.getElementById('debe-cards-list');
+            container.innerHTML = '';
+
+            if (debeList.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-xs text-center py-6">Seidauk iha rejistu debe.</p>`;
+                return;
+            }
+
+            let totalUnpaidSum = 0;
+
+            debeList.forEach(d => {
+                const restu = d.total - d.paid;
+                if (restu > 0) totalUnpaidSum += restu;
+
+                const isPaidOff = restu <= 0;
+                const percent = Math.min(100, (d.paid / d.total) * 100);
+
+                const itemDetails = d.items.map(i => `${i.name} (${i.qty} ${displayUnitLabel(i.unit)} x $${formatPrice(i.price)})`).join(', ');
+
+                const card = document.createElement('div');
+                card.className = "border rounded-xl p-4 bg-white shadow-sm space-y-3";
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="font-bold text-slate-800 text-base">${d.customer}</span>
+                            <span class="text-xs text-slate-400 block mt-0.5">Data: ${d.date}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="printDebeList(${d.id})" title="Print debe ${d.customer}" class="text-teal-700 hover:text-teal-900 p-1" aria-label="Print debe ${d.customer}">
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+                            ${isPaidOff ? `<input type="checkbox" class="paid-debe-select h-4 w-4 accent-emerald-600" data-debe-id="${d.id}" onchange="updatePaidDebeDeleteButton()" aria-label="Hapus debe ${d.customer}">` : ''}
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${isPaidOff ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                                ${isPaidOff ? 'Selu Tiha Ona' : 'Seidauk Selu'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                        <strong>Sasan:</strong> ${itemDetails}
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs font-semibold">
+                            <span class="text-slate-600">Total: $${formatPrice(d.total)}</span>
+                            <span class="text-emerald-600">Selu tiha: $${formatPrice(d.paid)}</span>
+                            ${d.paid > 0 && !isPaidOff ? `<span class="text-red-600 font-bold">Sei falta: $${formatPrice(Math.max(0, restu))}</span>` : ''}
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden border">
+                            <div class="bg-emerald-500 h-2 transition-all duration-300" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+
+                    ${renderDebeHistory(d, isPaidOff)}
+
+                    ${!isPaidOff ? `
+                        <div class="pt-1 flex gap-2">
+                            <button onclick="openInstallmentModal(${d.id})" title="Cicil / Lunas" aria-label="Cicil / Lunas" class="flex-1 bg-teal-700 hover:bg-teal-800 text-white text-xs py-2 rounded-lg font-bold transition flex justify-center items-center gap-1">
+                                Cicil / Lunas
+                            </button>
+                            <button onclick="markFullPaid(${d.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-lg font-bold transition">
+                                Selu Hotu
+                            </button>
+                        </div>
+                    ` : ''}
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('debe-modal-unpaid-sum').innerText = `$${formatPrice(totalUnpaidSum)}`;
+            updatePaidDebeDeleteButton();
+        }
+
+        function submitInstallment() {
+            const amount = parseFloat(document.getElementById('installment-amount').value);
+            const note = document.getElementById('installment-note').value;
+            if (!amount || amount <= 0) return alert("Valor Pagamentu lalos!");
+
+            const d = debeList.find(x => x.id === activeInstallmentDebeId);
+            if (!d) return;
+            const restuBeforePayment = d.total - d.paid;
+            const appliedAmount = Math.min(amount, restuBeforePayment);
+            const change = Math.max(0, amount - restuBeforePayment);
+            d.paid += appliedAmount;
+            d.history = d.history || [];
+            d.history.push({
+                date: new Date().toLocaleDateString(),
+                at: new Date().toISOString(),
+                amount, appliedAmount, change, note
+            });
+            const restuAfterPayment = Math.max(0, d.total - d.paid);
+            if (restuAfterPayment === 0) {
+                archiveDebeToReport(d);
+            }
+            saveDebeList();
+
+            closeInstallmentModal();
+            renderDebeCards();
+            updateDebeHeader();
+            showToast(change > 0
+                ? `Debe lunas. Fo fila osan: $${formatPrice(change)}`
+                : restuAfterPayment === 0
+                    ? 'Debe lunas.'
+                    : `Pagamentu $${amount.toFixed(2)} simu tiha ona. Sei falta: $${formatPrice(restuAfterPayment)}`);
+        }
+
+        function markFullPaid(debeId) {
+            const d = debeList.find(x => x.id === debeId);
+            if (!d) return;
+            const restu = Math.max(0, d.total - d.paid);
+            d.history = d.history || [];
+            d.history.push({
+                date: new Date().toLocaleDateString(),
+                at: new Date().toISOString(),
+                amount: restu, appliedAmount: restu, change: 0, note: 'Selu hotu'
+            });
+            d.paid = d.total;
+            archiveDebeToReport(d);
+            saveDebeList();
+            renderDebeCards();
+            updateDebeHeader();
+            showToast(`Debe ba "${d.customer}" marque nudar Selu Tiha Ona!`);
+        }
+        // ===== AKHIR DETALLU PAGAMENTU DEBE =====
+            // ===== KONFIRMASI AESTHETIC =====
+        (function () {
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes confFade { from { opacity: 0 } to { opacity: 1 } }
+                @keyframes confPop { from { opacity: 0; transform: translateY(12px) scale(.95) } to { opacity: 1; transform: translateY(0) scale(1) } }
+            `;
+            document.head.appendChild(style);
+
+            window.showConfirmDialog = function (options) {
+                return new Promise(resolve => {
+                    const o = Object.assign({
+                        title: 'Konfirma',
+                        message: '',
+                        confirmText: 'OK',
+                        cancelText: 'Kansela',
+                        danger: false
+                    }, options);
+
+                    const overlay = document.createElement('div');
+                    overlay.className = 'fixed inset-0 z-[95] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm';
+                    overlay.style.animation = 'confFade .15s ease-out';
+                    overlay.innerHTML = `
+                        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden text-center" style="animation: confPop .2s ease-out">
+                            <div class="pt-7 pb-2 px-6">
+                                <div class="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center ${o.danger ? 'bg-red-100' : 'bg-amber-100'}">
+                                    <i class="fa-solid ${o.danger ? 'fa-trash-can text-red-500' : 'fa-circle-question text-amber-500'} text-2xl"></i>
+                                </div>
+                                <h3 id="conf-title" class="text-base font-bold text-slate-900"></h3>
+                                <p id="conf-msg" class="mt-1 text-sm text-slate-500"></p>
+                            </div>
+                            <div class="p-5 pt-4 grid grid-cols-2 gap-3">
+                                <button id="conf-cancel" class="border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-2.5 rounded-xl text-sm transition"></button>
+                                <button id="conf-ok" class="${o.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-teal-700 hover:bg-teal-800'} text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-sm"></button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+                    overlay.querySelector('#conf-title').textContent = o.title;
+                    overlay.querySelector('#conf-msg').textContent = o.message;
+                    overlay.querySelector('#conf-cancel').textContent = o.cancelText;
+                    overlay.querySelector('#conf-ok').textContent = o.confirmText;
+
+                    function finish(result) {
+                        overlay.remove();
+                        document.removeEventListener('keydown', onKey);
+                        resolve(result);
+                    }
+                    function onKey(e) {
+                        if (e.key === 'Escape') {
+                            e.preventDefault();
+                            finish(false);
+                        }
+                    }
+
+                    overlay.querySelector('#conf-cancel').onclick = () => finish(false);
+                    overlay.querySelector('#conf-ok').onclick = () => finish(true);
+                    overlay.onclick = e => { if (e.target === overlay) finish(false); };
+                    document.addEventListener('keydown', onKey);
+                    overlay.querySelector('#conf-cancel').focus();
+                });
+            };
+        })();
+
+        async function deleteReportTransaction(id) {
+            if (!requireAdmin()) return;
+            const t = transactions.find(x => x.id === id);
+            if (!t) return;
+
+            const ok = await showConfirmDialog({
+                title: 'Hamos transasaun?',
+                message: `Transasaun "${t.kliente}" ($${t.total.toFixed(2)}) sei hamos permanente.`,
+                confirmText: 'Hamos',
+                cancelText: 'Kansela',
+                danger: true
+            });
+            if (!ok) return;
+
+            transactions = transactions.filter(x => x.id !== id);
+            totalTransasaun = transactions.length;
+            totalVendas = transactions.reduce((sum, x) => sum + x.total, 0);
+            saveTransactions();
+
+            if (typeof renderReport === 'function') renderReport();
+            else openReportModal();
+            showToast('Transasaun hamos tiha ona.');
+        }
+        // ===== AKHIR KONFIRMASI AESTHETIC =====
+    </script>
+</body>
+</html>
